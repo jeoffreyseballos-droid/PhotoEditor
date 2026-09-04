@@ -1,0 +1,40 @@
+name: Desktop foundation checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-26
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      - run: npm run prepare:native
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: cargo fmt --all -- --check
+      # Non-UI services are tested independently of the native webview test harness.
+      - run: cargo test -p photo-core -p photo-contracts --locked --target ${{ matrix.target }}
+      - run: cargo clippy --workspace --all-targets --locked --target ${{ matrix.target }} -- -D warnings
+      - run: npm run desktop:build -- --target ${{ matrix.target }} --no-bundle
+      # Unsigned binary build only. Signing, notarization and release publishing are not configured.

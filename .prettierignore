@@ -1,0 +1,9 @@
+node_modules
+.resources
+.tools
+dist
+target
+src-tauri/gen
+Cargo.lock
+package-lock.json
+*.rs

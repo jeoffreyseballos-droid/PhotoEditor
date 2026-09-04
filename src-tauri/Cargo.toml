@@ -1,0 +1,27 @@
+[package]
+name = "photo-editor-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "photo_editor_desktop"
+# Desktop-only shell: a Rust library linked into main, no mobile/static C ABI.
+crate-type = ["rlib"]
+
+[features]
+default = []
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+photo-core = { path = "../crates/photo-core" }
+photo-contracts = { path = "../crates/photo-contracts" }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"

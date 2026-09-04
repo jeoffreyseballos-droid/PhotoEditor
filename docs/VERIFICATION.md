@@ -1,8 +1,87 @@
-# Phase 2.1 verification record
+# Phase 3 verification record
+
+Date: 2026-09-04, Windows x64 host. Rust 1.98.1 MSVC, Visual Studio x64 C++ Build Tools, Node 22.20.0. All development/test/build files stayed in PhotoEditor. No PhotographerApp work, Git commit or push.
+
+## Phase 3 executed checks
+
+| Check                                                  | Result                                                                        |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| npm run format:check                                   | Passed after formatting                                                       |
+| npm run lint                                           | Passed, zero warnings                                                         |
+| npm test                                               | 26 passed: 4 format + 11 existing UI + 11 development-panel tests             |
+| npm run build                                          | Passed TypeScript and Vite production build                                   |
+| cargo fmt --all -- --check                             | Passed                                                                        |
+| cargo test -p photo-core -p photo-contracts --locked   | 113 passed; one opt-in 42 MP test excluded from this standard run             |
+| cargo clippy --workspace --all-targets -- -D warnings  | Passed, zero warnings                                                         |
+| Windows x64 MSVC desktop build, --no-bundle            | Passed; executable under target/release with prepared local runtime resources |
+| Existing real Canon/Sony job manual acceptance         | Not run: no job/source folder supplied                                        |
+| Native interactive recipe round-trip / external viewer | Not run                                                                       |
+| Apple Silicon                                          | Not run; no macOS claim                                                       |
+| Installer/signing/notarization                         | Out of scope                                                                  |
+
+The separate release-mode 42 MP TIFF regression also passed on 2026-09-04 (2.28 s observed test runtime). This makes **114 distinct Rust tests executed** in Phase 3, including the opt-in case; it is a generated TIFF check, not a Canon/Sony RAW benchmark.
+
+Standard Rust count: 12 recipe-contract + 5 toolkit-contract + 1 process + 22 foundation + 16 ingestion + 13 recipe-core + 19 standard rendering + 25 toolkit integration = **113**. Existing synthetic LibRaw DNG, real MODNet CPU-model loading/inference and actual pinned lens-database tests were rerun as part of that suite. They do not certify real camera/lens/portrait behavior.
+
+### New evidence
+
+- Twelve contract tests exercise neutral/default recipes, required fields, unknown/future schemas, explicit v0 bridge, NaN/infinity/ranges, curves/crops/layers/optics, mask-reference bounds, canonical round trips, normalized rotation/zero/identity curves, behavior hashes, semantic diffs, complete legacy control translation and independent template instantiation.
+- Thirteen core tests cover current/draft/snapshot/restore/restart independence, reset pre-state capture, duplicate suppression, generation conflicts, SQL-injected rollback, Phase 2/2.1 payload migration, corrupt current/legacy recovery with exact-payload retention, unique JSON export/import, cross-asset masks, 200-snapshot retention, recipe-driven pixels, preview/export agreement on equal-resolution fixtures, actual mask replacement/deletion/model invalidation, actual lens XML/metadata dependencies and lazy 3,000-asset grid access.
+- Foreign asset mask references are rejected even when the target has its own ready cache. Null logical references resolve only to the target's own derived mask.
+- The existing renderer remains exercised through its compatibility API and the new recipe entry point. Small deterministic fixtures verify exposure, HSL, optical controls, subject/background selectivity, repeated output and preview cache reuse/rekeying. Reduced RAW previews are not claimed pixel-identical to full-resolution exports.
+- Frontend tests now use recipe saves/render requests, verify successive save generations, reset commit reasons, Inspector identity/JSON export/history comparison/restore/import and corrupt-data recovery. These are component tests with mocked IPC, not native acceptance.
+
+The first full run correctly exposed an outdated SQLite schema expectation (4 versus new 5); that fixture was updated. A new output-path assertion was corrected to compare canonical Windows paths. A repeat run also caught an inherited whole-TIFF byte comparison crossing the Little CMS profile-creation timestamp boundary. Existing overlay and preview/export checks, and the new recipe comparisons, now assert decoded RGB16 samples; embedded-profile presence/color handling remain covered separately. The renderer was not changed to hide this metadata variability. Full workspace lint findings were fixed without suppressing warnings. A final native-preparation attempt overlapped a running ExifTool integration test and encountered a Windows DLL file lock; preparation/build was retried after the tests exited. Frontend tests/build require ordinary build-tool access because the restricted launcher prevents esbuild from resolving the workspace through ancestor directories.
+
+## Reproduce Phase 3
+
+From PhotoEditor:
+
+```powershell
+. ./scripts/activate-msvc.ps1
+npm run prepare:native
+npm run format:check
+npm run lint
+npm test
+npm run build
+$env:CARGO_TARGET_DIR = Join-Path (Get-Location) '.tools/verify-msvc'
+cargo fmt --all -- --check
+cargo test -p photo-core -p photo-contracts --locked
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+Use a fresh process with the normal target directory for native preparation and the desktop build:
+
+```powershell
+. ./scripts/activate-msvc.ps1
+npm run desktop:build -- --no-bundle
+```
+
+The activation script keeps compiler/cache/temp settings process-local and project-local. No global toolchain configuration was changed. The isolated debug target avoids the stale transitive metadata previously observed in the old target/debug folder.
+
+## Manual Phase 3 acceptance still required
+
+Supply an existing PhotoEditor job or its Canon/Sony source folder. Keep originals unchanged and verification outputs inside PhotoEditor. No unrelated folders were searched for photographs.
+
+1. Open a previously edited Canon and Sony RAW; verify old Phase 2/2.1 basic, curve/HSL/detail/optics and local values.
+2. Inspect schema 1, recipe ID, hash, origin and revision. Change exposure, Update Preview, verify hash/pixels.
+3. Generate/inspect the source's own mask; adjust Subject Exposure, render and inspect boundaries.
+4. Export recipe JSON. Reset All, import it, Update Preview and verify creative edits return.
+5. Capture multiple meaningful snapshots; compare controls and restore an earlier revision. Update Preview and compare output.
+6. Close/reopen PhotoEditor and the job; verify current recipe and revision history persist.
+7. Export JPEG, compare to the edited preview in a color-managed viewer (allow documented resolution/detail differences).
+8. Import onto an unrelated photo. Confirm no source mask is reused; resolve/generate that target's own mask and verify only the intended regions change.
+9. Verify all reset variants and that failed/unresolved masks remain explicitly reported.
+
+No real photographic or native acceptance checkbox is marked complete by synthetic fixtures. Phase 4 decisions, analysis, style training, cloud/auth/licensing and new segmentation types remain intentionally unimplemented.
+
+---
+
+## Historical Phase 2.1 verification record
 
 Date: 2026-09-03, Windows 11 x64. Rust 1.98.1 MSVC, Visual Studio x64 C++ Build Tools, Node 22.20.0. All source changes, downloads, caches and generated tests stayed inside PhotoEditor. PhotographerApp was not modified.
 
-## Current executed checks
+### Historical executed checks
 
 | Check                                                   | Result                                                                                                                          |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |

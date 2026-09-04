@@ -165,3 +165,142 @@ pub async fn list_warnings(
     let service = state.0.clone();
     blocking(move || service.repository.warnings(&job_id, offset, limit)).await
 }
+
+#[tauri::command]
+pub async fn save_recipe(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    recipe: photo_contracts::EditRecipe,
+    expected_generation: u64,
+    reason: Option<photo_core::recipes::RevisionReason>,
+) -> photo_contracts::ProcessingResult<photo_core::development::DevelopmentState> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| {
+            repo.save_recipe(&job_id, &asset_id, &recipe, expected_generation, reason)?;
+            service.load(&job_id, &asset_id)
+        })
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn render_recipe(
+    state: State<'_, DesktopState>,
+    request: photo_core::development::RecipeRenderRequest,
+) -> photo_contracts::ProcessingResult<photo_core::development::DevelopmentResult> {
+    let service = state.1.clone();
+    let permit = service.reserve(&request.request_id, request.preview)?;
+    tauri::async_runtime::spawn_blocking(move || service.render_recipe(request, permit))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn recipe_mask(
+    state: State<'_, DesktopState>,
+    request: photo_core::development::RecipeMaskRequest,
+) -> photo_contracts::ProcessingResult<photo_core::development::MaskResult> {
+    let service = state.1.clone();
+    let permit = service.reserve(&request.request_id, true)?;
+    tauri::async_runtime::spawn_blocking(move || service.recipe_mask(request, permit))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn recipe_history(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    offset: u32,
+    limit: u32,
+) -> photo_contracts::ProcessingResult<Vec<photo_core::recipes::RecipeRevision>> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| repo.recipe_history(&job_id, &asset_id, offset, limit))
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn restore_recipe(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    revision_id: String,
+    expected_generation: u64,
+) -> photo_contracts::ProcessingResult<photo_core::development::DevelopmentState> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| {
+            repo.restore_revision(&job_id, &asset_id, &revision_id, expected_generation)?;
+            service.load(&job_id, &asset_id)
+        })
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn recipe_diff(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    revision_id: String,
+) -> photo_contracts::ProcessingResult<Vec<photo_contracts::RecipeDifference>> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| repo.recipe_diff(&job_id, &asset_id, &revision_id))
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn export_recipe(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+) -> photo_contracts::ProcessingResult<std::path::PathBuf> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| repo.export_recipe(&job_id, &asset_id))
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn import_recipe(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    path: std::path::PathBuf,
+    expected_generation: u64,
+) -> photo_contracts::ProcessingResult<photo_core::development::DevelopmentState> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| {
+            repo.import_recipe_file(&job_id, &asset_id, &path, expected_generation)?;
+            service.load(&job_id, &asset_id)
+        })
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn recipe_json(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+) -> photo_contracts::ProcessingResult<String> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| {
+            let state = repo.get_recipe(&job_id, &asset_id)?;
+            if let Some(e) = state.error {
+                return Err(e.into());
+            }
+            Ok(state.recipe.canonical_json()?)
+        })
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}

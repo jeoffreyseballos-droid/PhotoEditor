@@ -431,7 +431,8 @@ fn overlays_never_change_export_pixels_and_exposure_does_not_regenerate_masks() 
         )
         .unwrap();
     engine.render(&r, &token()).unwrap();
-    let before = std::fs::read(&r.destination).unwrap();
+    // LCMS embeds profile creation time; compare decoded pixels, not metadata-bearing files.
+    let before = image::open(&r.destination).unwrap().to_rgb16();
     let (_, overlay) = engine
         .mask_preview(
             &r.original,
@@ -445,7 +446,7 @@ fn overlays_never_change_export_pixels_and_exposure_does_not_regenerate_masks() 
     assert!(overlay.unwrap().starts_with(b"\x89PNG"));
     r.destination = root.path().join("after-overlay.tif");
     engine.render(&r, &token()).unwrap();
-    assert_eq!(before, std::fs::read(&r.destination).unwrap());
+    assert_eq!(before, image::open(&r.destination).unwrap().to_rgb16());
     r.adjustments.exposure_ev = 1.;
     engine
         .mask_preview(
@@ -817,9 +818,9 @@ fn preview_and_export_share_all_toolkit_stages_for_same_resolution_fixture() {
         )
         .unwrap();
     engine.render(&r, &token()).unwrap();
-    let export = std::fs::read(&r.destination).unwrap();
+    let export = image::open(&r.destination).unwrap().to_rgb16();
     r.preview = true;
     r.destination = root.path().join("same-resolution-preview.tif");
     engine.render(&r, &token()).unwrap();
-    assert_eq!(export, std::fs::read(&r.destination).unwrap());
+    assert_eq!(export, image::open(&r.destination).unwrap().to_rgb16());
 }

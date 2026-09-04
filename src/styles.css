@@ -858,3 +858,37 @@ dd {
 .local-layer {
   margin-top: 0.8rem;
 }
+
+.recipe-inspector dd {
+  margin: 0 0 0.6rem;
+  overflow-wrap: anywhere;
+}
+.recipe-inspector dt {
+  color: var(--muted, #aab6c4);
+  font-size: 0.85rem;
+}
+.recipe-inspector textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+  resize: vertical;
+}
+.recipe-inspector table {
+  width: 100%;
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+.recipe-inspector td,
+.recipe-inspector th {
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+  padding: 0.35rem;
+}
+.recipe-inspector li {
+  margin-block: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.recipe-inspector button {
+  margin: 0.2rem;
+}

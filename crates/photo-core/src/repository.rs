@@ -23,6 +23,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/002_ingestion_warnings.sql"),
     include_str!("../migrations/003_development.sql"),
     include_str!("../migrations/004_toolkit.sql"),
+    include_str!("../migrations/005_recipes.sql"),
 ];
 
 #[derive(Clone)]

@@ -2,6 +2,7 @@
 //! Hugin polynomials use half-short-side radii; PA uses half-diagonal radii.
 use super::{internal, pixels::FloatImage};
 use photo_contracts::*;
+use sha2::{Digest, Sha256};
 use std::path::Path;
 pub const DATABASE_VERSION: &str = "lensfun-db-23e8cb8050d680c7a293edb3d48b600754665f05";
 #[derive(Clone, Debug)]
@@ -33,6 +34,7 @@ pub struct LensProfileResolver {
     cameras: Vec<Camera>,
     lenses: Vec<Lens>,
     failure: Option<String>,
+    content_identity: String,
 }
 fn norm(s: &str) -> String {
     s.chars()
@@ -68,6 +70,13 @@ fn aspect_ratio(s: Option<&str>) -> f32 {
     }
 }
 impl LensProfileResolver {
+    pub fn dependency_identity(&self) -> &str {
+        if self.failure.is_some() {
+            "unavailable"
+        } else {
+            &self.content_identity
+        }
+    }
     pub fn unavailable(reason: impl Into<String>) -> Self {
         Self {
             failure: Some(reason.into()),
@@ -88,6 +97,7 @@ impl LensProfileResolver {
             .map_err(|e| e.to_string())?;
         paths.sort();
         let mut db = Self::default();
+        let mut digest = Sha256::new();
         for path in paths
             .into_iter()
             .filter(|p| p.extension().is_some_and(|e| e == "xml"))
@@ -96,6 +106,8 @@ impl LensProfileResolver {
                 return Err("Lens database file exceeds safety limit".into());
             }
             let xml = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+            digest.update((xml.len() as u64).to_le_bytes());
+            digest.update(xml.as_bytes());
             let document = roxmltree::Document::parse_with_options(
                 &xml,
                 roxmltree::ParsingOptions {
@@ -172,6 +184,7 @@ impl LensProfileResolver {
         if db.lenses.is_empty() {
             return Err("Lens database contains no profiles".into());
         }
+        db.content_identity = format!("{:x}", digest.finalize());
         Ok(db)
     }
     pub fn resolve(

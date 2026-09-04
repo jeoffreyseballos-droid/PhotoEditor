@@ -4,6 +4,7 @@ pub mod masks;
 pub mod optics;
 mod output;
 pub mod pixels;
+pub mod recipe;
 pub mod tools;
 pub(crate) use output::copy_to_publishable;
 pub use output::publish_unique;
@@ -229,7 +230,7 @@ impl ProcessingEngine for CpuProcessingEngine {
     fn capabilities(&self) -> EngineCapabilities {
         EngineCapabilities {
             engine_id: format!("{RENDERER_VERSION}/{}", self.raw.id()),
-            recipe_versions: vec![1, 2],
+            recipe_versions: vec![RECIPE_SCHEMA_VERSION],
             supports_gpu: false,
             supports_remote_execution: false,
         }

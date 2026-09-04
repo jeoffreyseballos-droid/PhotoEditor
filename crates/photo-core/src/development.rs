@@ -20,6 +20,9 @@ use std::{
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct DevelopmentState {
+    pub recipe_state: Option<crate::recipes::RecipeState>,
+    #[serde(default)]
+    pub unresolved_masks: Option<Vec<String>>,
     #[serde(default)]
     pub diagnostics: ToolkitDiagnostics,
     pub adjustments: RenderAdjustments,
@@ -87,10 +90,21 @@ pub struct DevelopmentService {
 }
 impl JobRepository {
     pub fn development(&self, job: &str, asset: &str) -> ProcessingResult<DevelopmentState> {
-        self.asset(job, asset).map_err(internal)?;
+        let recipe_state = self.get_recipe(job, asset)?;
+        let adjustments = recipe_state.recipe.adjustments()?;
         let db = self.connect().map_err(internal)?;
         let row=db.query_row("SELECT adjustments_json,revision,state,source_identity,preview_path,export_path,error_json,warnings_json FROM development_state WHERE job_id=?1 AND asset_id=?2",params![job,asset],|r|Ok((r.get::<_,String>(0)?,r.get::<_,u64>(1)?,r.get::<_,String>(2)?,r.get::<_,Option<String>>(3)?,r.get::<_,Option<String>>(4)?,r.get::<_,Option<String>>(5)?,r.get::<_,Option<String>>(6)?,r.get::<_,String>(7)?))).optional().map_err(internal)?;
-        if let Some((a, revision, state, identity, preview, export, error, warnings)) = row {
+        if let Some((
+            _legacy_projection,
+            revision,
+            state,
+            identity,
+            preview,
+            export,
+            error,
+            warnings,
+        )) = row
+        {
             let toolkit: String = db
                 .query_row(
                     "SELECT toolkit_json FROM development_state WHERE job_id=?1 AND asset_id=?2",
@@ -116,9 +130,9 @@ impl JobRepository {
             }
             Ok(DevelopmentState {
                 diagnostics,
-                adjustments: serde_json::from_str::<RenderAdjustments>(&a)
-                    .map_err(internal)?
-                    .validated()?,
+                adjustments,
+                recipe_state: Some(recipe_state),
+                unresolved_masks: None,
                 revision,
                 state,
                 source_identity: identity,
@@ -133,6 +147,8 @@ impl JobRepository {
         } else {
             Ok(DevelopmentState {
                 state: "source_ready".into(),
+                adjustments,
+                recipe_state: Some(recipe_state),
                 ..Default::default()
             })
         }
@@ -143,15 +159,134 @@ impl JobRepository {
         asset: &str,
         adjustments: &RenderAdjustments,
     ) -> ProcessingResult<DevelopmentState> {
-        self.asset(job, asset).map_err(internal)?;
-        let adjustments = serde_json::to_string(&adjustments.validated()?).map_err(internal)?;
-        self.connect().map_err(internal)?.execute("INSERT INTO development_state(job_id,asset_id,adjustments_json,updated_at) VALUES (?1,?2,?3,?4) ON CONFLICT(job_id,asset_id) DO UPDATE SET adjustments_json=excluded.adjustments_json,revision=development_state.revision+1,state='source_ready',request_id=NULL,preview_path=NULL,error_json=NULL,updated_at=excluded.updated_at",params![job,asset,adjustments,chrono::Utc::now().to_rfc3339()]).map_err(internal)?;
+        let current = self.get_recipe(job, asset)?;
+        let mut recipe = current.recipe.with_adjustments(adjustments)?;
+        recipe.provenance.manually_modified = true;
+        if recipe.provenance.origin == RecipeOrigin::System {
+            recipe.provenance.origin = RecipeOrigin::Manual;
+        }
+        self.save_recipe(job, asset, &recipe, current.generation, None)?;
         self.development(job, asset)
     }
 }
+#[derive(Clone, Deserialize)]
+pub struct RecipeRenderRequest {
+    pub job_id: String,
+    pub asset_id: String,
+    pub request_id: String,
+    pub expected_generation: u64,
+    pub preview: bool,
+    pub output_format: OutputFormat,
+    pub jpeg_quality: u8,
+    #[serde(default)]
+    pub commit: bool,
+}
+#[derive(Clone, Deserialize)]
+pub struct RecipeMaskRequest {
+    pub job_id: String,
+    pub asset_id: String,
+    pub request_id: String,
+    pub expected_generation: u64,
+    pub layer_id: Option<String>,
+    pub generate: bool,
+}
 impl DevelopmentService {
+    pub fn with_recipes<T>(
+        &self,
+        work: impl FnOnce(&JobRepository) -> ProcessingResult<T>,
+    ) -> ProcessingResult<T> {
+        let _guard = self.worker.lock().map_err(internal)?;
+        work(&self.repository)
+    }
+    pub fn render_recipe(
+        &self,
+        request: RecipeRenderRequest,
+        permit: RenderPermit,
+    ) -> ProcessingResult<DevelopmentResult> {
+        let _guard = self.worker.lock().map_err(internal)?;
+        permit.token.check()?;
+        let current = self
+            .repository
+            .get_recipe(&request.job_id, &request.asset_id)?;
+        if let Some(e) = current.error {
+            return Err(e.into());
+        }
+        if current.generation != request.expected_generation {
+            return Err(RecipeError::new(
+                RecipeErrorCode::Conflict,
+                "Recipe changed; reload before rendering",
+            )
+            .into());
+        }
+        // Only explicit preview and export commit; auto-preview remains a draft.
+        let reason = if !request.preview {
+            Some(crate::recipes::RevisionReason::Export)
+        } else if request.commit {
+            Some(crate::recipes::RevisionReason::Preview)
+        } else {
+            None
+        };
+        self.repository.save_recipe(
+            &request.job_id,
+            &request.asset_id,
+            &current.recipe,
+            current.generation,
+            reason,
+        )?;
+        let saved = self
+            .repository
+            .development(&request.job_id, &request.asset_id)?;
+        let request = DevelopmentRequest {
+            job_id: request.job_id,
+            asset_id: request.asset_id,
+            request_id: request.request_id,
+            adjustments: saved.adjustments.clone(),
+            preview: request.preview,
+            output_format: request.output_format,
+            jpeg_quality: request.jpeg_quality,
+        };
+        self.run_saved(request, permit, saved)
+    }
+    pub fn recipe_mask(
+        &self,
+        request: RecipeMaskRequest,
+        permit: RenderPermit,
+    ) -> ProcessingResult<MaskResult> {
+        let _guard = self.worker.lock().map_err(internal)?;
+        let current = self
+            .repository
+            .get_recipe(&request.job_id, &request.asset_id)?;
+        if let Some(e) = current.error {
+            return Err(e.into());
+        }
+        if current.generation != request.expected_generation {
+            return Err(RecipeError::new(
+                RecipeErrorCode::Conflict,
+                "Recipe changed; reload before mask operation",
+            )
+            .into());
+        }
+        self.mask_inner(
+            MaskRequest {
+                job_id: request.job_id,
+                asset_id: request.asset_id,
+                request_id: request.request_id,
+                adjustments: current.recipe.adjustments()?,
+                layer_id: request.layer_id,
+                generate: request.generate,
+            },
+            permit,
+        )
+    }
     pub fn mask(&self, request: MaskRequest, permit: RenderPermit) -> ProcessingResult<MaskResult> {
         let _guard = self.worker.lock().map_err(internal)?;
+        self.mask_inner(request, permit)
+    }
+    fn mask_inner(
+        &self,
+        request: MaskRequest,
+        permit: RenderPermit,
+    ) -> ProcessingResult<MaskResult> {
         permit.token.check()?;
         let a = request.adjustments.validated()?;
         let asset = self
@@ -242,6 +377,40 @@ impl DevelopmentService {
                 },
             };
         }
+        if let Some(recipe) = &state.recipe_state {
+            let source = self.repository.asset(job, asset).map_err(internal)?;
+            match self.engine.effective_recipe(
+                &recipe.recipe,
+                &source.original_path,
+                &optics_metadata(&source.metadata),
+            ) {
+                Ok(effective) => {
+                    state.unresolved_masks = Some(effective.unresolved_masks);
+                    if recipe
+                        .recipe
+                        .local_layers
+                        .iter()
+                        .any(|l| l.enabled && l.strength > 0.)
+                    {
+                        state.diagnostics.mask = effective.mask;
+                    }
+                }
+                Err(e) => {
+                    state.unresolved_masks = Some(
+                        recipe
+                            .recipe
+                            .local_layers
+                            .iter()
+                            .filter(|l| l.enabled && l.strength > 0.)
+                            .map(|l| l.id.clone())
+                            .collect(),
+                    );
+                    state
+                        .warnings
+                        .push(format!("Recipe dependencies not evaluated: {}", e.message));
+                }
+            }
+        }
         Ok(state)
     }
     pub fn save(
@@ -296,16 +465,24 @@ impl DevelopmentService {
     ) -> ProcessingResult<DevelopmentResult> {
         let _guard = self.worker.lock().map_err(internal)?;
         permit.token.check()?;
-        let job = self.repository.get_job(&request.job_id).map_err(internal)?;
-        let asset = self
-            .repository
-            .asset(&request.job_id, &request.asset_id)
-            .map_err(internal)?;
         let saved = self.repository.save_development(
             &request.job_id,
             &request.asset_id,
             &request.adjustments,
         )?;
+        self.run_saved(request, permit, saved)
+    }
+    fn run_saved(
+        &self,
+        request: DevelopmentRequest,
+        permit: RenderPermit,
+        saved: DevelopmentState,
+    ) -> ProcessingResult<DevelopmentResult> {
+        let job = self.repository.get_job(&request.job_id).map_err(internal)?;
+        let asset = self
+            .repository
+            .asset(&request.job_id, &request.asset_id)
+            .map_err(internal)?;
         let identity = rendering::source_identity(&asset.original_path)?;
         let db = self.repository.connect().map_err(internal)?;
         db.execute("UPDATE development_state SET state=?3,request_id=?4,source_identity=?5 WHERE job_id=?1 AND asset_id=?2",params![request.job_id,request.asset_id,if request.preview{"rendering_preview"}else{"rendering_export"},request.request_id,identity]).map_err(internal)?;
@@ -331,39 +508,37 @@ impl DevelopmentService {
         identity: &str,
         cancel: &CancellationToken,
     ) -> ProcessingResult<DevelopmentResult> {
-        let key = rendering::preview_key(
-            &format!("{}:{}", asset.fingerprint, identity),
-            &saved.adjustments,
-            self.engine.backend_id(),
+        let recipe = &saved
+            .recipe_state
+            .as_ref()
+            .ok_or_else(|| internal("Missing authoritative recipe"))?
+            .recipe;
+        let effective = self.engine.effective_recipe(
+            recipe,
+            &asset.original_path,
+            &optics_metadata(&asset.metadata),
         )?;
+        let key = rendering::recipe::recipe_preview_key(
+            &format!("{}:{}", asset.fingerprint, identity),
+            &effective.recipe_hash,
+            &effective.dependency_hash,
+            self.engine.backend_id(),
+        );
+        let manifest_path = self.cache.join(format!("{key}.json"));
+        let manifest = read_preview_manifest(&manifest_path);
         let cached = self.cache.join(format!("{key}.jpg"));
         let mut output = None;
-        // Re-evaluate availability for optics/local stages; never reuse a fallback-only JPEG
-        // after a model/database/cache becomes available. Source/mask caches still apply.
-        let dynamic_tools = saved.adjustments.optics.enabled
-            || saved
-                .adjustments
-                .local_layers
-                .iter()
-                .any(|l| l.enabled && l.strength > 0.);
-        let (width, height, warnings, path, diagnostics) = if request.preview
-            && !dynamic_tools
-            && valid_preview(&cached)
+        let (width, height, warnings, path, diagnostics) = if let Some(manifest) =
+            manifest.filter(|_| request.preview && valid_preview(&cached))
         {
             let (w, h) = image::image_dimensions(&cached).map_err(internal)?;
-            let mut warnings = saved.warnings.clone();
+            let mut warnings = manifest.warnings;
             let note = "Cached reduced preview; assess fine detail in export".to_owned();
             if !warnings.contains(&note) {
                 warnings.push(note);
             }
             cancel.check()?;
-            let mut diagnostics = saved.diagnostics.clone();
-            diagnostics.lens = self.engine.optics_diagnostic(
-                &optics_metadata(&asset.metadata),
-                saved.adjustments.optics,
-                w,
-                h,
-            );
+            let diagnostics = manifest.diagnostics;
             (w, h, warnings, cached, diagnostics)
         } else {
             let folder = if request.preview {
@@ -389,7 +564,8 @@ impl DevelopmentService {
                 request.output_format
             };
             let render_path = temp.path().join(format!("pixels.{}", format.extension()));
-            let rendered = self.engine.render_with_metadata(
+            let rendered = self.engine.render_recipe(
+                recipe,
                 &RenderRequest {
                     asset_id: asset.id.clone(),
                     original: asset.original_path.clone(),
@@ -404,7 +580,6 @@ impl DevelopmentService {
                         request.jpeg_quality
                     },
                 },
-                &optics_metadata(&asset.metadata),
                 cancel,
             )?;
             let mut warnings = rendered.warnings;
@@ -432,6 +607,21 @@ impl DevelopmentService {
                     "Source changed before publication; retry",
                 ));
             }
+            if self
+                .engine
+                .effective_recipe(
+                    recipe,
+                    &asset.original_path,
+                    &optics_metadata(&asset.metadata),
+                )?
+                .dependency_hash
+                != effective.dependency_hash
+            {
+                return Err(ProcessingError::new(
+                    ProcessingErrorCode::SourceChanged,
+                    "Render dependencies changed before publication; retry",
+                ));
+            }
             let publish = rendering::copy_to_publishable(&publish_source, &folder)?;
             cancel.check()?;
             let path = if request.preview {
@@ -441,6 +631,13 @@ impl DevelopmentService {
                 publish
                     .persist_noclobber(&cached)
                     .map_err(|e| io_error(e.error))?;
+                let manifest = PreviewManifest {
+                    warnings: warnings.clone(),
+                    diagnostics: rendered.diagnostics.clone(),
+                };
+                let bytes = serde_json::to_vec(&manifest).map_err(internal)?;
+                // Disposable sidecar; a missing/invalid sidecar triggers a fresh render.
+                std::fs::write(&manifest_path, bytes).map_err(io_error)?;
                 cached
             } else {
                 let path =
@@ -456,6 +653,22 @@ impl DevelopmentService {
                 rendered.diagnostics,
             )
         };
+        if rendering::source_identity(&asset.original_path)? != identity
+            || self
+                .engine
+                .effective_recipe(
+                    recipe,
+                    &asset.original_path,
+                    &optics_metadata(&asset.metadata),
+                )?
+                .dependency_hash
+                != effective.dependency_hash
+        {
+            return Err(ProcessingError::new(
+                ProcessingErrorCode::SourceChanged,
+                "Preview dependencies changed; retry",
+            ));
+        }
         let data = if request.preview {
             Some(preview_data(&path)?)
         } else {
@@ -491,9 +704,11 @@ impl DevelopmentService {
             tx.execute("UPDATE processing_state SET stage=?3,engine_version=?4,updated_at=?5 WHERE job_id=?1 AND asset_id=?2",params![request.job_id,request.asset_id,if request.preview{"rendered"}else{"exported"},rendering::RENDERER_VERSION,chrono::Utc::now().to_rfc3339()]).map_err(internal)?;
         }
         tx.commit().map_err(internal)?;
-        let state = self
-            .repository
-            .development(&request.job_id, &request.asset_id)?;
+        if changed == 0 {
+            return Err(ProcessingError::new(ProcessingErrorCode::Busy,
+                "Recipe changed during rendering. Result was not attached to the new recipe; retry. A previously published export may remain in the output folder."));
+        }
+        let state = self.load(&request.job_id, &request.asset_id)?;
         Ok(DevelopmentResult {
             state,
             preview_data: data,
@@ -545,4 +760,16 @@ fn preview_data(path: &std::path::Path) -> ProcessingResult<String> {
         "data:image/jpeg;base64,{}",
         STANDARD.encode(std::fs::read(path).map_err(io_error)?)
     ))
+}
+
+#[derive(Serialize, Deserialize)]
+struct PreviewManifest {
+    warnings: Vec<String>,
+    diagnostics: ToolkitDiagnostics,
+}
+fn read_preview_manifest(path: &std::path::Path) -> Option<PreviewManifest> {
+    if path.metadata().ok()?.len() > 64 * 1024 {
+        return None;
+    }
+    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
 }

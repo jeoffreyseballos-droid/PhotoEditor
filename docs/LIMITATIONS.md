@@ -1,4 +1,4 @@
-# Phase 2.1 limitations
+# Phase 3 limitations
 
 ## Verification is not photographic certification
 
@@ -48,8 +48,18 @@ No content hashing of every source, filesystem watcher, removed-file reconciliat
 
 Exports require temporary disk headroom. Crash after file publication but before SQLite commit may leave an untracked valid export. Existing outputs are never silently overwritten. Metadata copying is an allowlist, not a general-purpose privacy sanitizer.
 
+## Recipe-specific limits
+
+The first complete contract is recipe schema 1; only its documented v0 legacy interchange bridge is upgraded. Arbitrary operation lists, future schemas and Lightroom/XMP files are rejected. Recipes are capped at 256 KiB and eight local layers. Export includes IDs/timestamps/provenance, so inspect these before sharing, though no source/cache paths or pixels are embedded.
+
+History retains the original plus latest 199 meaningful snapshots; older intermediate snapshots are pruned. This is not a permanent correction-training event log. Recovery archives have no automatic purge. No immediate undo/redo, full template UI, copy-to-all workflow or batch recipe scheduler. The Inspector displays latest 100 history entries; core history is paginated. Draft persistence is asynchronous and shutdown during an in-flight save can lose that final unsaved change.
+
+Missing/stale mask references preserve intent but skip affected local output; warnings must be reviewed. Import rebinds selectors only to the target's cache or leaves them unresolved. No mask file is transferred. Resolved profile identities remain source-derived diagnostics, not creative settings. Hashing conservatively includes some neutral/inactive subparameters rather than proving mathematical equivalence of all pipelines.
+
+Same-source fingerprints still use canonical path/size/mtime rather than reading every RAW byte. Mask dependencies hash actual validated samples; optics dependencies hash loaded database XML. Embedded Little CMS ICC profiles include creation time, so equal rendered pixels do not imply identical whole-file hashes. No cross-platform bit-for-bit certification or real Canon/Sony recipe round-trip acceptance has been performed.
+
 ## Deferred
 
-Phase 3: full recipe/operation history and recipe migrations. Later phases: trained styles/training, automatic exposure or image analysis, batch AI recipes/scene consistency decisions, clustering, Lightroom/XMP imports, face beauty/generative editing, PhotographerApp APIs, auth, cloud, licensing/billing, GPU providers and production installers/signing. Work stops at Phase 2.1.
+Phase 4 and later (intentionally not implemented): trained styles/training, automatic exposure or image analysis, batch AI recipes/scene consistency decisions, clustering, Lightroom/XMP imports, face beauty/generative editing, PhotographerApp APIs, auth, cloud, licensing/billing, GPU providers and production installers/signing. Work stops at Phase 3.
 
 Ship the executable with raw/, exiftool/ and toolkit/ resources and their licenses. The MODNet model is Apache-2.0; ONNX Runtime is MIT; the unmodified Lensfun database is CC BY-SA 3.0. Distribution/license-obligation review remains a release task.

@@ -2,7 +2,9 @@
 pub mod development;
 pub mod formats;
 pub use development::*;
+pub mod recipe;
 pub mod toolkit;
+pub use recipe::*;
 use serde::{Deserialize, Serialize};
 use std::{future::Future, path::PathBuf, pin::Pin};
 pub use toolkit::*;
@@ -17,19 +19,6 @@ pub enum ServiceError {
     Cancelled,
     #[error("The service request failed: {0}")]
     Failed(String),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EditRecipe {
-    pub schema_version: u32,
-    /// A versioned operation vocabulary will be defined alongside the real engine.
-    pub operations: Vec<EditOperation>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EditOperation {
-    pub kind: String,
-    pub parameters: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

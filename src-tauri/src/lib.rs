@@ -59,7 +59,7 @@ pub fn run() {
             tracing::info!(target: "application", "Desktop foundation initialized");
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![commands::list_jobs, commands::get_job, commands::create_job, commands::resume_job, commands::list_assets, commands::get_thumbnail, commands::machine_resources, commands::photo_formats, commands::list_warnings,commands::get_development,commands::save_development,commands::render_development,commands::cancel_development,commands::development_mask])
+        .invoke_handler(tauri::generate_handler![commands::list_jobs, commands::get_job, commands::create_job, commands::resume_job, commands::list_assets, commands::get_thumbnail, commands::machine_resources, commands::photo_formats, commands::list_warnings,commands::get_development,commands::save_development,commands::render_development,commands::cancel_development,commands::development_mask,commands::save_recipe,commands::render_recipe,commands::recipe_mask,commands::recipe_history,commands::restore_recipe,commands::recipe_diff,commands::export_recipe,commands::import_recipe,commands::recipe_json])
         .run(tauri::generate_context!())
         .expect("Photo Editor could not start. Check platform prerequisites and local storage permissions.");
 }

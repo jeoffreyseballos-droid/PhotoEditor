@@ -1,4 +1,4 @@
-# Photo Editor — Phase 2.1
+# Photo Editor — Phase 3
 
 A local-first desktop foundation for Windows 11 x64 and macOS Apple Silicon. Built with Tauri 2, React/TypeScript, and independent Rust services. This is a development foundation, not a release-ready photo processor.
 
@@ -17,6 +17,8 @@ A local-first desktop foundation for Windows 11 x64 and macOS Apple Silicon. Bui
 - Collision-safe output naming, photographic-metadata allowlist and cancellable bounded CPU rendering. Original sources remain immutable.
 
 Phase 2.1 adds typed RGB curves, eight-band color mixing, presence/detail, conservative Lensfun-database optics, creative post-crop vignette and local CPU MODNet portrait masks with independent subject/background development. See [architecture](docs/ARCHITECTURE.md), [limitations](docs/LIMITATIONS.md) and [verification](docs/VERIFICATION.md).
+
+Phase 3 adds the authoritative [Edit Recipe v1 contract](docs/EDIT_RECIPE.md), lossless legacy migration, canonical hashes, dependency-aware preview caching, transactional per-asset history/restore, JSON import/export and a development Recipe Inspector.
 
 No AI auto-editing, training/styles, authentication, cloud sync, licensing or credential implementation is included. Camera support is decoder-dependent; real Canon/Sony acceptance remains required. HEIC/HEIF development is unavailable.
 

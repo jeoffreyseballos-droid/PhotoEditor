@@ -29,6 +29,80 @@ async function call<T>(
 }
 
 export const api = {
+  saveRecipe: (
+    jobId: string,
+    assetId: string,
+    recipe: import("./recipe").EditRecipe,
+    expectedGeneration: number,
+    reason: import("./recipe").RevisionReason | null = null,
+  ) =>
+    call<DevelopmentState>("save_recipe", {
+      jobId,
+      assetId,
+      recipe,
+      expectedGeneration,
+      reason,
+    }),
+  renderRecipe: (
+    request: Omit<DevelopmentRequest, "adjustments"> & {
+      expected_generation: number;
+      commit: boolean;
+    },
+  ) => call<DevelopmentResult>("render_recipe", { request }),
+  recipeMask: (
+    request: Omit<import("./toolkit").MaskRequest, "adjustments"> & {
+      expected_generation: number;
+    },
+  ) => call<import("./toolkit").MaskResult>("recipe_mask", { request }),
+  recipeHistory: (jobId: string, assetId: string, offset = 0, limit = 100) =>
+    call<import("./recipe").RecipeRevision[]>("recipe_history", {
+      jobId,
+      assetId,
+      offset,
+      limit,
+    }),
+  restoreRecipe: (
+    jobId: string,
+    assetId: string,
+    revisionId: string,
+    expectedGeneration: number,
+  ) =>
+    call<DevelopmentState>("restore_recipe", {
+      jobId,
+      assetId,
+      revisionId,
+      expectedGeneration,
+    }),
+  recipeDiff: (jobId: string, assetId: string, revisionId: string) =>
+    call<import("./recipe").RecipeDifference[]>("recipe_diff", {
+      jobId,
+      assetId,
+      revisionId,
+    }),
+  exportRecipe: (jobId: string, assetId: string) =>
+    call<string>("export_recipe", { jobId, assetId }),
+  importRecipe: (
+    jobId: string,
+    assetId: string,
+    path: string,
+    expectedGeneration: number,
+  ) =>
+    call<DevelopmentState>("import_recipe", {
+      jobId,
+      assetId,
+      path,
+      expectedGeneration,
+    }),
+  recipeJson: (jobId: string, assetId: string) =>
+    call<string>("recipe_json", { jobId, assetId }),
+  chooseRecipe: async (): Promise<string | null> => {
+    const result = await open({
+      multiple: false,
+      title: "Import an edit recipe",
+      filters: [{ name: "Edit recipe JSON", extensions: ["json"] }],
+    });
+    return typeof result === "string" ? result : null;
+  },
   developmentMask: (request: import("./toolkit").MaskRequest) =>
     call<import("./toolkit").MaskResult>("development_mask", { request }),
   development: (jobId: string, assetId: string) =>

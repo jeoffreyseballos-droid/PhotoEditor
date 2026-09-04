@@ -173,9 +173,11 @@ export function ToolkitControls({
   mask,
   onMask,
   hideOverlay,
+  reset,
 }: {
   a: RenderAdjustments;
   change: (a: RenderAdjustments) => void;
+  reset: (a: RenderAdjustments) => void;
   lens?: LensDiagnostic;
   mask?: MaskDiagnostic;
   onMask: (generate: boolean, layerId: string | null) => void;
@@ -183,8 +185,8 @@ export function ToolkitControls({
 }) {
   const [channel, setChannel] = useState<keyof ToneCurve>("master");
   const points = a.curve[channel];
-  function layerChange(index: number, layer: LocalLayer) {
-    change({
+  function layerChange(index: number, layer: LocalLayer, isReset = false) {
+    (isReset ? reset : change)({
       ...a,
       local_layers: a.local_layers.map((old, i) => (i === index ? layer : old)),
     });
@@ -246,7 +248,7 @@ export function ToolkitControls({
             </div>
           </fieldset>
         ))}
-        <button onClick={() => change({ ...a, hsl: neutralAdjustments().hsl })}>
+        <button onClick={() => reset({ ...a, hsl: neutralAdjustments().hsl })}>
           Reset Mixer
         </button>
       </details>
@@ -353,7 +355,7 @@ export function ToolkitControls({
           Add curve point
         </button>
         <button
-          onClick={() => change({ ...a, curve: neutralAdjustments().curve })}
+          onClick={() => reset({ ...a, curve: neutralAdjustments().curve })}
         >
           Reset Curves
         </button>
@@ -385,7 +387,7 @@ export function ToolkitControls({
         </div>
         <button
           onClick={() =>
-            change({
+            reset({
               ...a,
               presence: neutralPresence(),
               effects: neutralAdjustments().effects,
@@ -423,7 +425,7 @@ export function ToolkitControls({
         </div>
         <button
           onClick={() =>
-            change({
+            reset({
               ...a,
               detail: neutralDetail(),
               sharpening: 0,
@@ -495,7 +497,7 @@ export function ToolkitControls({
           </p>
         ))}
         <button
-          onClick={() => change({ ...a, optics: neutralAdjustments().optics })}
+          onClick={() => reset({ ...a, optics: neutralAdjustments().optics })}
         >
           Reset Optics
         </button>
@@ -627,12 +629,16 @@ export function ToolkitControls({
               </details>
               <button
                 onClick={() =>
-                  layerChange(index, {
-                    ...layer,
-                    strength: 1,
-                    invert: false,
-                    adjustments: neutralLocal(),
-                  })
+                  layerChange(
+                    index,
+                    {
+                      ...layer,
+                      strength: 1,
+                      invert: false,
+                      adjustments: neutralLocal(),
+                    },
+                    true,
+                  )
                 }
               >
                 Reset {title}

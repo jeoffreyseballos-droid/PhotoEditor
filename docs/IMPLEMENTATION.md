@@ -1,6 +1,28 @@
-# Phase 2.1 implementation inventory
+# Phase 3 implementation inventory
 
-Development stayed inside PhotoEditor. PhotographerApp was not modified. Phase 2 architecture was inspected and extended, not replaced. No Phase 3 recipe history, trained styles, cloud/auth/API or production signing work was added.
+All development stayed inside PhotoEditor. No PhotographerApp changes, Git commits or pushes. Photographic algorithms and native model assets were preserved.
+
+## Phase 3 changed files
+
+| Files                                                                                 | Change                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| crates/photo-contracts/src/{recipe,lib}.rs, Cargo.toml; Cargo.lock                    | Typed recipe v1, grouping, validation/upgrades/canonical hashing/diff/template; reuse existing SHA-256/chrono dependencies                                                              |
+| crates/photo-contracts/tests/recipe.rs                                                | 12 recipe validation, bridge, normalization, hash, diff and template tests                                                                                                              |
+| crates/photo-core/migrations/005_recipes.sql                                          | Current recipe, indexed revision history and recovery archives                                                                                                                          |
+| crates/photo-core/src/{recipes,repository,development,lib}.rs                         | Lazy migration, transactional optimistic saves/snapshots/restores/import/export and authoritative orchestration                                                                         |
+| crates/photo-core/src/rendering/{recipe,mod,optics}.rs                                | Effective recipe resolution; actual mask/profile cache dependencies; unchanged photographic pipeline                                                                                    |
+| crates/photo-core/tests/recipes.rs; tests/{foundation,toolkit}.rs                     | Recipe persistence, rollback/recovery/retention/portability/render/cache/3,000-asset tests; schema version 5 expectation; pixel comparisons exclude time-varying ICC container metadata |
+| src/{recipe,api,types}.ts                                                             | Typed recipe DTOs, control-view adapter and recipe IPC                                                                                                                                  |
+| src/components/{DevelopmentPanel,ToolkitControls,RecipeInspector}.tsx; src/styles.css | Recipe state authority, reset commit points, JSON/history/diff/restore tools                                                                                                            |
+| src/test/{development.test.tsx,recipe-fixture.ts}                                     | Recipe API regression tests, generation-safe saves, Inspector/import/restore/reset/recovery                                                                                             |
+| src-tauri/src/{commands,lib}.rs                                                       | Background recipe commands and registration                                                                                                                                             |
+| README.md; docs/{ARCHITECTURE,IMPLEMENTATION,LIMITATIONS,VERIFICATION,EDIT_RECIPE}.md | Contract, lifecycle, scope, evidence and remaining acceptance                                                                                                                           |
+
+No new segmentation model or photographic control was introduced. No .gitignore changes were needed: generated files remain in ignored .tools, .resources, target, dist and node_modules directories. Full recipe storage/hashing/history/import behavior is documented in [EDIT_RECIPE.md](EDIT_RECIPE.md). Verification results and manual gaps are in [VERIFICATION.md](VERIFICATION.md).
+
+## Historical Phase 2.1 implementation inventory
+
+The following inventory records the earlier Phase 2.1 delivery. Its then-deferred recipe work is implemented above; AI, cloud/auth/API and signing remain deferred.
 
 ## Phase 2.1 changed files
 

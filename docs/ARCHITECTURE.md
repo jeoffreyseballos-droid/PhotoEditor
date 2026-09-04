@@ -1,12 +1,14 @@
-# Phase 2.1 architecture
+# Phase 3 architecture
 
 ## Preserved boundaries
 
 React → Tauri background commands → photo-core → photo-contracts. The renderer has no React, SQLite, cloud or authentication dependency. Phase 1.1 discovery, immutable originals, ExifTool metadata/source previews, job membership, output-subtree pruning and checkpoints are preserved. Phase 2 LibRaw, Little CMS, floating-point processing and collision-safe exports remain in place.
 
-The per-asset RenderAdjustments vocabulary is authoritative Rust: legacy basic/geometry fields plus typed curve, eight HSL bands, presence, detail, optics, effects and an ordered vector of local layers. Each asset owns its own values; no folder-wide preset object is required. Optional scene_cluster_id, sequence_id, reference_asset_id and consistency_note reserve context without implementing clustering or AI decisions.
+The per-asset EditRecipe v1 is authoritative Rust: a required identity/version envelope, typed global basic/curve/color-mixer/presence/detail/optics/effects/geometry groups, ordered logical-mask layers, metadata and provenance. Each job/asset owns independent editing intent. RenderAdjustments is a validated compatibility projection, not another persisted authority. See [the complete recipe contract](EDIT_RECIPE.md).
 
-RenderRequest carries source-derived OpticsMetadata separately from creative parameters. A caller can develop through the provider-neutral ProcessingEngine contract without UI code. Adjustment schema 2 accepts legacy JSON and adds neutral defaults; full EditRecipe history/versioning remains Phase 3.
+Source-derived OpticsMetadata stays separate. CPU render_recipe validates an EditRecipe, resolves source/mask/profile dependencies and translates into the unchanged low-level renderer. The React state holds a recipe, not a separate render parameter vector. Legacy adjustment schemas 1/2 migrate losslessly into recipe schema 1; SQLite schema 5 adds transactional current recipes, revision history and corrupt-data recovery.
+
+Analysis = what the image is. Style = what the photographer wants. Recipe = what to do to this individual image. Renderer = executes the recipe. Future analysis/style generation remains separate and unimplemented.
 
 ## Source normalization and formats
 
@@ -76,7 +78,9 @@ A SHA-256 mask key includes canonical source identity (path, size, mtime), decod
 
 Alpha is a disposable compressed grayscale16 PNG, bounded to 1024², plus small JSON diagnostic sidecar. SQLite migration 004 adds toolkit_json to development_state and a mask_state metadata table. No image/float arrays enter SQLite. Missing/corrupt caches are stale and regenerate through Generate Masks. Model failures/unavailability are nonfatal to global render/export; local layers are skipped with visible diagnostics.
 
-Normalized source proxy reuse remains. Edited JPEG preview cache keys include validated parameters and renderer version. When profile optics or active local layers are involved, final JPEG cache hits are bypassed to re-evaluate availability and avoid reusing a previous fallback-only render. Source/mask caches still avoid re-decoding/re-inference where applicable.
+Normalized source proxy reuse remains. Edited preview keys now combine source identity, canonical recipe content hash, renderer/backend version, validated mask sample/model/geometry dependencies, actual loaded lens XML digest and objective metadata. Optics/local cache hits are supported; unavailable or replaced derived data rekeys. Diagnostic sidecars are disposable and overlays remain excluded. See EDIT_RECIPE.md for conservative hash semantics and dependency checks.
+
+Migration 005 is additive and lazily converts one current recipe per opened asset. Saves, hashes, optional history and legacy checkpoint projections commit together with optimistic generation checks. Meaningful actions create deduplicated snapshots; auto-preview/slider events do not. Keep the original plus latest 199 snapshots. Corrupt payloads are retained and explicit reset/import/restore recovers a neutral/error display. History metadata is paged lazily; the grid never loads thousands of full recipe histories.
 
 The startup render budget remains min(4 GiB, available RAM / 2), with a conservative 64 bytes/source-or-output-pixel preflight (~67 MP at maximum), and LibRaw's 2 GiB decoder limit. Local candidates are processed sequentially; scalar blur scratch avoids many RGB buffers. Segmentation uses only a reduced proxy and is serialized against full export. These are application limits, not an OS/native-memory sandbox. No disk quota/eviction UI yet.
 

@@ -151,6 +151,8 @@ export interface RenderAdjustments extends Toolkit {
   noise_reduction: number;
 }
 export interface DevelopmentState {
+  recipe_state?: import("./recipe").RecipeState | null;
+  unresolved_masks?: string[] | null;
   diagnostics?: import("./toolkit").ToolkitDiagnostics;
   adjustments: RenderAdjustments;
   revision: number;

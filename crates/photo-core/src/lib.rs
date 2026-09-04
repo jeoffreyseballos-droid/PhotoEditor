@@ -8,6 +8,7 @@ pub mod metadata;
 pub mod models;
 pub mod paths;
 mod process;
+pub mod recipes;
 pub mod rendering;
 pub mod repository;
 pub mod resources;

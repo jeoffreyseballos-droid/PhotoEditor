@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, errorMessage } from "../api";
 import type { Asset, DevelopmentState, RenderAdjustments } from "../types";
 import { neutralAdjustments } from "../toolkit";
@@ -9,9 +9,17 @@ import {
   ToolkitControls,
 } from "./ToolkitControls";
 
-const neutral = neutralAdjustments();
+import { recipeControls, updateRecipeControls } from "../recipe";
+import type { EditRecipe, RecipeState, RevisionReason } from "../recipe";
+import { RecipeInspector } from "./RecipeInspector";
 export function DevelopmentPanel({ asset }: { asset: Asset }) {
-  const [a, setA] = useState<RenderAdjustments>(neutral);
+  const [recipe, setRecipe] = useState<EditRecipe | null>(null);
+  const recipeRef = useRef<EditRecipe | null>(null);
+  const persisted = useRef<RecipeState | null>(null);
+  const a = useMemo(
+    () => (recipe ? recipeControls(recipe) : neutralAdjustments()),
+    [recipe],
+  );
   const [loaded, setLoaded] = useState(false);
   const [state, setState] = useState<DevelopmentState | null>(null);
   const [source, setSource] = useState<string | null>(null);
@@ -38,9 +46,16 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
       .development(asset.job_id, asset.id)
       .then((s) => {
         if (mounted.current) {
-          setA({ ...neutralAdjustments(), ...s.adjustments });
+          if (!s.recipe_state)
+            throw new Error(
+              "This desktop version did not return an edit recipe.",
+            );
+          persisted.current = s.recipe_state;
+          recipeRef.current = s.recipe_state.recipe;
+          setRecipe(s.recipe_state.recipe);
+          if (s.recipe_state.error) setError(s.recipe_state.error.message);
           setMask(s.diagnostics?.mask);
-          lastSaved.current = JSON.stringify(s.adjustments);
+          lastSaved.current = JSON.stringify(s.recipe_state.recipe);
           setState(s);
           setLoaded(true);
           setStatus(
@@ -64,18 +79,28 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
     };
   }, [asset.job_id, asset.id]);
   const save = useCallback(
-    (value: RenderAdjustments) => {
+    (value: EditRecipe, reason: RevisionReason | null = null) => {
       const json = JSON.stringify(value);
       const next = saveQueue.current
         .catch(() => {})
         .then(async () => {
-          if (json === lastSaved.current) return;
-          const result = await api.saveDevelopment(
+          if (!reason && json === lastSaved.current) return;
+          if (!persisted.current) throw new Error("Recipe is not loaded.");
+          const result = await api.saveRecipe(
             asset.job_id,
             asset.id,
             value,
+            persisted.current.generation,
+            reason,
           );
+          if (!result.recipe_state) throw new Error("Missing saved recipe.");
+          persisted.current = result.recipe_state;
           lastSaved.current = json;
+          if (mounted.current && recipeRef.current === value) {
+            recipeRef.current = result.recipe_state.recipe;
+            setRecipe(result.recipe_state.recipe);
+            lastSaved.current = JSON.stringify(result.recipe_state.recipe);
+          }
           if (mounted.current) {
             setState(result);
             setStatus("Adjustments saved locally.");
@@ -90,14 +115,20 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
     [asset.job_id, asset.id],
   );
   // Saving tiny parameters is immediate and serial; it never starts image decoding.
-  function change(next: RenderAdjustments) {
-    setA(next);
+  function change(
+    next: RenderAdjustments,
+    reason: RevisionReason | null = null,
+  ) {
+    if (!recipeRef.current) return;
+    const updated = updateRecipeControls(recipeRef.current, next);
+    recipeRef.current = updated;
+    setRecipe(updated);
     setOverlay(null);
     setError("");
-    void save(next);
+    void save(updated, reason);
   }
   const render = useCallback(
-    async (preview: boolean) => {
+    async (preview: boolean, commit = true) => {
       setOverlay(null);
       cancelRequested.current = false;
       setBusy(true);
@@ -110,25 +141,39 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
       const id = crypto.randomUUID();
       requestId.current = id;
       try {
-        await save(a);
+        if (!recipeRef.current) return;
+        await save(recipeRef.current);
         if (!mounted.current) return;
         if (cancelRequested.current) throw new Error("Rendering cancelled");
-        const result = await api.renderDevelopment({
+        const result = await api.renderRecipe({
           job_id: asset.job_id,
           asset_id: asset.id,
           request_id: id,
-          adjustments: a,
+          expected_generation: persisted.current!.generation,
+          commit,
           preview,
           output_format: format,
           jpeg_quality: quality,
         });
         if (!mounted.current || requestId.current !== id) return;
         setState(result.state);
+        if (result.state.recipe_state) {
+          persisted.current = result.state.recipe_state;
+          recipeRef.current = result.state.recipe_state.recipe;
+          setRecipe(result.state.recipe_state.recipe);
+          lastSaved.current = JSON.stringify(result.state.recipe_state.recipe);
+        }
         if (result.state.diagnostics && a.local_layers.some((l) => l.enabled))
           setMask(result.state.diagnostics.mask);
         if (preview) {
           setEdited(result.preview_data);
-          setRenderedParams(JSON.stringify(a));
+          setRenderedParams(
+            JSON.stringify(
+              result.state.recipe_state
+                ? recipeControls(result.state.recipe_state.recipe)
+                : a,
+            ),
+          );
           setBefore(false);
         }
         setStatus(
@@ -153,7 +198,7 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
       renderedParams === JSON.stringify(a)
     )
       return;
-    const timer = window.setTimeout(() => void render(true), 350);
+    const timer = window.setTimeout(() => void render(true, false), 350);
     return () => window.clearTimeout(timer);
   }, [
     a,
@@ -183,13 +228,14 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
         : "Loading aligned mask overlay…",
     );
     try {
-      await save(a);
+      if (!recipeRef.current) return;
+      await save(recipeRef.current);
       if (!mounted.current || cancelRequested.current) return;
-      const result = await api.developmentMask({
+      const result = await api.recipeMask({
         job_id: asset.job_id,
         asset_id: asset.id,
         request_id: id,
-        adjustments: a,
+        expected_generation: persisted.current!.generation,
         layer_id: layerId,
         generate,
       });
@@ -207,6 +253,57 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
     } finally {
       if (requestId.current === id) requestId.current = null;
       if (mounted.current) setBusy(false);
+    }
+  }
+  async function recipeAction(
+    action: "snapshot" | "export" | "import" | "restore",
+    revisionId?: string,
+  ) {
+    if (!recipeRef.current || !persisted.current) return;
+    setBusy(true);
+    setError("");
+    try {
+      // Corrupt storage is recoverable by import/restore; never save its fallback implicitly.
+      if (!persisted.current.error) await save(recipeRef.current);
+      let result: DevelopmentState | null = null;
+      if (action === "snapshot") {
+        await save(recipeRef.current, "snapshot");
+        setStatus("Recipe snapshot saved.");
+      } else if (action === "export") {
+        const path = await api.exportRecipe(asset.job_id, asset.id);
+        setStatus(`Recipe JSON written · ${path}`);
+      } else if (action === "import") {
+        const path = await api.chooseRecipe();
+        if (path)
+          result = await api.importRecipe(
+            asset.job_id,
+            asset.id,
+            path,
+            persisted.current.generation,
+          );
+      } else if (revisionId)
+        result = await api.restoreRecipe(
+          asset.job_id,
+          asset.id,
+          revisionId,
+          persisted.current.generation,
+        );
+      if (result?.recipe_state) {
+        persisted.current = result.recipe_state;
+        recipeRef.current = result.recipe_state.recipe;
+        setRecipe(result.recipe_state.recipe);
+        lastSaved.current = JSON.stringify(result.recipe_state.recipe);
+        setState(result);
+        setOverlay(null);
+        setRenderedParams("");
+        setStatus(
+          `Recipe ${action === "restore" ? "restored" : "imported"}. Update Preview to inspect it. Local masks use this photo only.`,
+        );
+      }
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
     }
   }
   return (
@@ -303,6 +400,7 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
             <ToolkitControls
               a={a}
               change={change}
+              reset={(value) => change(value, "reset")}
               lens={state?.diagnostics?.lens}
               mask={mask}
               onMask={(generate, id) => void showMask(generate, id)}
@@ -351,21 +449,35 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
                 exceed 1.
               </p>
             </details>
-            <button onClick={() => change(neutralAdjustments())}>
+            <button onClick={() => change(neutralAdjustments(), "reset")}>
               Reset All
             </button>
             <button
               onClick={() =>
-                change({
-                  ...neutralAdjustments(),
-                  local_layers: a.local_layers,
-                  batch_context: a.batch_context,
-                })
+                change(
+                  {
+                    ...neutralAdjustments(),
+                    local_layers: a.local_layers,
+                    batch_context: a.batch_context,
+                  },
+                  "reset",
+                )
               }
             >
               Reset Global
             </button>
           </fieldset>
+          {state?.recipe_state && (
+            <RecipeInspector
+              asset={asset}
+              state={state.recipe_state}
+              recipe={recipe ?? state.recipe_state.recipe}
+              mask={mask}
+              unresolvedMasks={state.unresolved_masks}
+              busy={busy}
+              onAction={(action, id) => void recipeAction(action, id)}
+            />
+          )}
           <div className="development-actions">
             <label className="checkbox-label">
               <input

@@ -1,4 +1,7 @@
 //! Local application services, usable without the desktop shell.
+pub mod analysis;
+pub mod batch_context;
+pub mod culling;
 pub mod development;
 pub mod discovery;
 pub mod error;
@@ -7,6 +10,7 @@ pub mod jobs;
 pub mod metadata;
 pub mod models;
 pub mod paths;
+pub mod presets;
 mod process;
 pub mod recipes;
 pub mod rendering;

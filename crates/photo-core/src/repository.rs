@@ -24,6 +24,10 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/003_development.sql"),
     include_str!("../migrations/004_toolkit.sql"),
     include_str!("../migrations/005_recipes.sql"),
+    include_str!("../migrations/006_photo_analysis.sql"),
+    include_str!("../migrations/007_culling.sql"),
+    include_str!("../migrations/008_duplicate_content.sql"),
+    include_str!("../migrations/009_batch_context.sql"),
 ];
 
 #[derive(Clone)]
@@ -69,6 +73,9 @@ impl JobRepository {
     }
 
     pub fn recover_interrupted(&self) -> AppResult<()> {
+        self.connect()?.execute("UPDATE batch_context_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; cached context remains available.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
+        self.connect()?.execute("UPDATE culling_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; completed ratings preserved. Resume culling.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
+        self.connect()?.execute("UPDATE analysis_status SET state='interrupted', request_id=NULL, error='Analysis interrupted; rerun safely.' WHERE state IN ('queued','analyzing')", [])?;
         self.connect()?.execute("UPDATE development_state SET state='interrupted', request_id=NULL WHERE state IN ('rendering_preview','rendering_export')", [])?;
         self.connect()?.execute("UPDATE jobs SET status = 'interrupted', updated_at = ?1, last_error = 'Scanning was interrupted. Resume to continue.' WHERE status = 'scanning'", [Utc::now().to_rfc3339()])?;
         Ok(())

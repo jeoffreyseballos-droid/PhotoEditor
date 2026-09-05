@@ -12,6 +12,7 @@ import {
 import { recipeControls, updateRecipeControls } from "../recipe";
 import type { EditRecipe, RecipeState, RevisionReason } from "../recipe";
 import { RecipeInspector } from "./RecipeInspector";
+import { AnalysisInspector } from "./AnalysisInspector";
 export function DevelopmentPanel({ asset }: { asset: Asset }) {
   const [recipe, setRecipe] = useState<EditRecipe | null>(null);
   const recipeRef = useRef<EditRecipe | null>(null);
@@ -478,6 +479,7 @@ export function DevelopmentPanel({ asset }: { asset: Asset }) {
               onAction={(action, id) => void recipeAction(action, id)}
             />
           )}
+          <AnalysisInspector asset={asset} />
           <div className="development-actions">
             <label className="checkbox-label">
               <input

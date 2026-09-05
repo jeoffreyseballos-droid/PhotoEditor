@@ -6,10 +6,14 @@ export function Thumbnail({
   asset,
   selected,
   onSelect,
+  sourceOverride,
+  sourceDescription,
 }: {
   asset: Asset;
   selected: boolean;
   onSelect: () => void;
+  sourceOverride?: string | null;
+  sourceDescription?: string;
 }) {
   const element = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
@@ -37,7 +41,12 @@ export function Thumbnail({
   }, []);
 
   useEffect(() => {
-    if (!visible || asset.preview_status !== "ready") return;
+    if (
+      sourceOverride !== undefined ||
+      !visible ||
+      asset.preview_status !== "ready"
+    )
+      return;
     let cancelled = false;
     setSource(null);
     setFailed(false);
@@ -61,7 +70,11 @@ export function Thumbnail({
     asset.job_id,
     asset.preview_status,
     asset.fingerprint,
+    sourceOverride,
   ]);
+
+  const displayedSource =
+    sourceOverride === undefined ? source : sourceOverride;
 
   return (
     <button
@@ -72,23 +85,28 @@ export function Thumbnail({
       aria-label={`Select ${asset.filename}`}
     >
       <div className="photo-frame">
-        {source && !failed ? (
+        {displayedSource && (sourceOverride !== undefined || !failed) ? (
           <img
-            src={source}
+            src={displayedSource}
             alt={asset.filename}
+            aria-label={sourceDescription}
             loading="lazy"
             decoding="async"
-            onError={() => setFailed(true)}
+            onError={() => {
+              if (sourceOverride === undefined) setFailed(true);
+            }}
           />
         ) : (
           <div className="preview-placeholder">
             <span aria-hidden="true">▧</span>
             <small>
-              {asset.preview_status === "unavailable"
-                ? "No embedded preview"
-                : asset.preview_status === "failed" || failed
-                  ? "Preview unavailable"
-                  : "Loading preview…"}
+              {sourceOverride !== undefined
+                ? "Rendering edited preview…"
+                : asset.preview_status === "unavailable"
+                  ? "No embedded preview"
+                  : asset.preview_status === "failed" || failed
+                    ? "Preview unavailable"
+                    : "Loading preview…"}
             </small>
           </div>
         )}

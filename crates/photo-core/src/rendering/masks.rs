@@ -154,6 +154,9 @@ pub struct MaskCache {
     provider: Box<dyn SegmentationProvider>,
 }
 impl MaskCache {
+    pub fn provider_version(&self) -> &str {
+        self.provider.version()
+    }
     pub fn new(directory: PathBuf, provider: Box<dyn SegmentationProvider>) -> Self {
         Self {
             directory,

@@ -1,4 +1,7 @@
 //! Provider-neutral contracts. No desktop, network, renderer, or authentication implementation.
+pub mod analysis;
+pub mod batch_context;
+pub mod culling;
 pub mod development;
 pub mod formats;
 pub use development::*;
@@ -73,13 +76,8 @@ pub struct ImageProxy {
     pub color_space: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ImageAnalysis {
-    pub schema_version: u32,
-    pub provider_id: String,
-    pub model_version: String,
-    pub measurements: serde_json::Value,
-}
+/// Reserved provider API uses the authoritative Phase 4 contract, not an untyped dictionary.
+pub type ImageAnalysis = analysis::PhotoAnalysis;
 
 pub trait ImageAnalyzer: Send + Sync {
     fn analyze(&self, proxy: ImageProxy) -> ServiceFuture<'_, ImageAnalysis>;

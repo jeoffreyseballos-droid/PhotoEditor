@@ -86,7 +86,8 @@ export interface RecipeState {
   modified: boolean;
   error: { code: string; message: string } | null;
 }
-export type RevisionReason = "snapshot" | "reset" | "manual_edit";
+export type RevisionReason =
+  "snapshot" | "reset" | "manual_edit" | "built_in_preset";
 export interface RecipeRevision {
   revision_id: string;
   revision_number: number;

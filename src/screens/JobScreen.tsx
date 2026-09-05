@@ -7,6 +7,9 @@ import { FormatHint } from "../components/FormatHint";
 import { IngestionWarnings } from "../components/IngestionWarnings";
 import { DevelopmentPanel } from "../components/DevelopmentPanel";
 import type { Asset, Job, Page } from "../types";
+import type { PhotoType } from "../analysis";
+import { CullingScreen } from "./CullingScreen";
+import { PresetEditingScreen } from "./PresetEditingScreen";
 
 const PAGE_SIZE = 60;
 
@@ -20,6 +23,11 @@ export function JobScreen({ jobId }: { jobId: string }) {
   const [resuming, setResuming] = useState(false);
   const [revision, setRevision] = useState(0);
   const [developing, setDeveloping] = useState(false);
+  const [culling, setCulling] = useState(false);
+  const [editing, setEditing] = useState<{
+    photoType: PhotoType;
+    selectedAssetIds: string[];
+  } | null>(null);
   const generation = useRef(0);
 
   // One in-flight polling chain. Generation + cleanup prevent stale page/job responses.
@@ -75,6 +83,27 @@ export function JobScreen({ jobId }: { jobId: string }) {
     }
   }
 
+  if (editing)
+    return (
+      <PresetEditingScreen
+        key={jobId}
+        jobId={jobId}
+        photoType={editing.photoType}
+        initialSelectedAssetIds={editing.selectedAssetIds}
+        onBack={() => setEditing(null)}
+      />
+    );
+  if (culling)
+    return (
+      <CullingScreen
+        key={jobId}
+        jobId={jobId}
+        onClose={() => setCulling(false)}
+        onRunEditing={(photoType, selectedAssetIds) =>
+          setEditing({ photoType, selectedAssetIds })
+        }
+      />
+    );
   return (
     <section className="screen job-screen">
       <div className="eyebrow">LOCAL WORKSPACE / JOB</div>
@@ -91,6 +120,12 @@ export function JobScreen({ jobId }: { jobId: string }) {
           </p>
         </div>
         <div className="header-actions">
+          <button
+            disabled={!job || job.status === "scanning"}
+            onClick={() => setCulling(true)}
+          >
+            AI Culling
+          </button>
           <button onClick={refresh} disabled={loading || resuming}>
             Refresh
           </button>

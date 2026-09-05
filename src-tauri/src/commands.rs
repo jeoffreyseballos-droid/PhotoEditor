@@ -5,13 +5,297 @@ use photo_core::{
     models::{Asset, Job, NewJob, Page},
     resources::LocalResources,
 };
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use tauri::State;
 
 pub struct DesktopState(
     pub Arc<JobService>,
     pub Arc<photo_core::development::DevelopmentService>,
+    pub Arc<photo_core::analysis::AnalysisService>,
+    pub Arc<photo_core::culling::CullingService>,
+    pub Arc<photo_core::batch_context::BatchContextService>,
 );
+
+#[tauri::command]
+pub async fn run_batch_context(
+    state: State<'_, DesktopState>,
+    request: photo_core::batch_context::BatchContextRequest,
+) -> photo_contracts::ProcessingResult<photo_core::batch_context::BatchContextState> {
+    let service = state.4.clone();
+    let permit = service.reserve(request)?;
+    tauri::async_runtime::spawn_blocking(move || service.run(permit))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn batch_context_state(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<photo_core::batch_context::BatchContextState> {
+    let service = state.4.clone();
+    tauri::async_runtime::spawn_blocking(move || service.state(&job_id, photo_type))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn batch_context_progress(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<Option<photo_core::batch_context::BatchContextProgress>> {
+    let service = state.4.clone();
+    tauri::async_runtime::spawn_blocking(move || service.progress(&job_id, photo_type))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub fn cancel_batch_context(
+    state: State<'_, DesktopState>,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<()> {
+    state.4.cancel(&request_id)
+}
+
+#[tauri::command]
+pub fn builtin_presets() -> Vec<photo_core::presets::BuiltInPreset> {
+    photo_core::presets::built_in_presets()
+}
+
+#[tauri::command]
+pub async fn preset_editing_state(
+    state: State<'_, DesktopState>,
+    job_id: String,
+) -> photo_contracts::ProcessingResult<photo_core::presets::PresetEditingState> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| {
+            let mut state = repo.preset_editing_state(&job_id)?;
+            if state.applied_preset == Some(photo_core::presets::BuiltInPresetId::Pop) {
+                for asset_id in &state.selected_asset_ids {
+                    let development = service.load(&job_id, asset_id)?;
+                    if development.unresolved_masks.as_ref().is_some_and(|ids| {
+                        ids.iter()
+                            .any(|id| id == photo_core::presets::POP_SUBJECT_LAYER_ID)
+                    }) {
+                        state.unresolved_subject_masks.push(asset_id.clone());
+                    }
+                }
+            }
+            Ok(state)
+        })
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn apply_builtin_preset(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    preset_id: photo_core::presets::BuiltInPresetId,
+    asset_ids: Vec<String>,
+) -> photo_contracts::ProcessingResult<photo_core::presets::PresetApplyResult> {
+    let service = state.1.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.with_recipes(|repo| {
+            let mut result =
+                repo.apply_built_in_preset_to_assets(&job_id, preset_id, &asset_ids)?;
+            if preset_id == photo_core::presets::BuiltInPresetId::Pop {
+                for asset_id in &result.selected_asset_ids {
+                    let development = service.load(&job_id, asset_id)?;
+                    if development.unresolved_masks.as_ref().is_some_and(|ids| {
+                        ids.iter()
+                            .any(|id| id == photo_core::presets::POP_SUBJECT_LAYER_ID)
+                    }) {
+                        result.unresolved_subject_masks.push(asset_id.clone());
+                    }
+                }
+            }
+            Ok(result)
+        })
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn run_culling(
+    state: State<'_, DesktopState>,
+    request: photo_core::culling::CullingRequest,
+) -> photo_contracts::ProcessingResult<photo_core::culling::CullingProgress> {
+    let service = state.3.clone();
+    let permit = service.reserve(request)?;
+    tauri::async_runtime::spawn_blocking(move || service.run(permit))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub fn cancel_culling(
+    state: State<'_, DesktopState>,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<()> {
+    state.3.cancel(&request_id)
+}
+#[tauri::command]
+pub async fn culling_progress(
+    state: State<'_, DesktopState>,
+    job_id: String,
+) -> photo_contracts::ProcessingResult<Option<photo_core::culling::CullingProgress>> {
+    let service = state.3.clone();
+    tauri::async_runtime::spawn_blocking(move || service.progress(&job_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn culling_overview(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<photo_core::culling::CullingOverview> {
+    let service = state.3.clone();
+    tauri::async_runtime::spawn_blocking(move || service.overview(&job_id, photo_type))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn culling_detail(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<photo_contracts::culling::CullingState> {
+    let service = state.3.clone();
+    tauri::async_runtime::spawn_blocking(move || service.detail(&job_id, &asset_id, photo_type))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn culling_rating(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+    rating: Option<photo_contracts::culling::Stars>,
+) -> photo_contracts::ProcessingResult<()> {
+    let service = state.3.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.set_rating(&job_id, &asset_id, photo_type, rating)
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn culling_select_asset(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    selected: bool,
+) -> photo_contracts::ProcessingResult<()> {
+    let service = state.3.clone();
+    tauri::async_runtime::spawn_blocking(move || service.select_asset(&job_id, &asset_id, selected))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn culling_select_assets(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+    asset_ids: Vec<String>,
+) -> photo_contracts::ProcessingResult<()> {
+    let service = state.3.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.select_assets(&job_id, photo_type, &asset_ids)
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn culling_select_ratings(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+    ratings: Vec<photo_contracts::culling::Stars>,
+    relationship_filter: Option<photo_core::culling::RelationshipFilter>,
+    selected_only: Option<bool>,
+    exclude_exact_duplicates: Option<bool>,
+) -> photo_contracts::ProcessingResult<()> {
+    let service = state.3.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.select_filtered(
+            &job_id,
+            photo_type,
+            &ratings,
+            relationship_filter.unwrap_or_default(),
+            selected_only.unwrap_or(false),
+            exclude_exact_duplicates.unwrap_or(true),
+        )
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn analyze_asset(
+    state: State<'_, DesktopState>,
+    request: photo_core::analysis::AnalysisRequest,
+) -> photo_contracts::ProcessingResult<photo_core::analysis::AnalysisState> {
+    let service = state.2.clone();
+    let permit = service.reserve(request)?;
+    tauri::async_runtime::spawn_blocking(move || service.analyze_asset(permit))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn get_analysis(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<photo_core::analysis::AnalysisState> {
+    let service = state.2.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.get_analysis(&job_id, &asset_id, photo_type)
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub fn cancel_analysis(
+    state: State<'_, DesktopState>,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<()> {
+    state.2.cancel(&request_id)
+}
+#[tauri::command]
+pub async fn invalidate_analysis(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+) -> photo_contracts::ProcessingResult<()> {
+    let service = state.2.clone();
+    tauri::async_runtime::spawn_blocking(move || service.invalidate_analysis(&job_id, &asset_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+#[tauri::command]
+pub async fn export_analysis(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    asset_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<PathBuf> {
+    let service = state.2.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.export_analysis(&job_id, &asset_id, photo_type)
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
 
 #[tauri::command]
 pub async fn get_development(

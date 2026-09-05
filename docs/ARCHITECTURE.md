@@ -1,4 +1,30 @@
-# Phase 3 architecture
+# Phase 6 architecture and batch context
+
+## Source batch context, independent of editing
+
+Phase 6 adds a fourth independent source boundary: PhotoAnalysis describes one photograph; CullingAssessment recommends selection; BatchContext describes relationships inside the exact persisted editing selection; EditRecipe remains the only editing authority. The data flow is `selected asset IDs + current source fingerprints + current PhotoAnalysis + reusable current Phase 5 descriptors -> BatchContext`. No reverse edge exists from recipes, presets, masks or exports.
+
+`photo-contracts/batch_context.rs` owns the bounded schema-1 envelope, independent scene/lighting/sequence groups, explicit ranked reference candidates, per-asset relative exposure/color relationships, availability/confidence notes and diagnostics. `photo-core/batch_context` owns deterministic identities, a 64-anchor scene pass, a 27-neighbor lighting index, sequence/bracket classification, reference filtering, a cancellable service and migration-9 JSON persistence. Exact identities reopen from cache; changed selections perform bounded full regrouping while older cache rows remain reusable. See [BATCH_CONTEXT.md](BATCH_CONTEXT.md).
+
+The Editing screen exposes this only in a collapsed development inspector. Tauri dispatches load/group/persist work off the UI thread and exposes progress/cancellation. A failed asset remains an unavailable context rather than failing its peers. Future trained style resolution may consume `PhotoAnalysis + AssetBatchContext + TrainedStyle`, but no such resolver or edit generation exists.
+
+## Preserved Phase 5 culling and preset editing
+
+## Independent culling and photographer selection
+
+PhotoAnalysis → additional local face/detail/visual features → centralized photo-type scorer → absolute ratings → similarity/burst context → final CullingAssessment v1. `photo-core/culling` owns this pipeline, independent of all recipe/render editing APIs. `FaceDetector` / `EyeStateDetector` isolate optional CPU providers; YuNet lives in a separate helper process. The shipping eye-state provider is explicitly unavailable.
+
+Migration 7 separates immutable AI evidence/current pointers from photographer stars, override-event feedback and editing-selection flags. Effective stars are composed at read time; recipe or user changes never invalidate AI. One bounded cancellable job computes missing Phase 4 analysis, reuses features, persists completed assets, then publishes final group adjustments atomically. A paged photographer grid consumes derived issue flags and one deterministic overview representative per exact/Near/Burst group for simple rating/duplicate/issue filters; immutable technical ties, counts, reasons, manual overrides and provenance remain available in the inspector. Each membership-changing filter derives every matching asset ID across pagination, updates the local selection snapshot optimistically, then queues one exact replacement through the existing bounded selection command. Manual checkbox changes update the same local snapshot immediately; Clear remains authoritative until a later filter change. Run for Editing waits for persistence and passes only that saved snapshot to the deterministic preset screen; it never re-runs culling or falls back. Preset application must carry that explicit ID set, and the core rejects it unless it exactly matches the current persisted snapshot. The preset screen serially reuses/generates POP masks and renders reduced previews through the existing cancellable development service. Contact-sheet images are recipe/dependency-hash cache results, never source thumbnails or React-processed pixels. Export All serially invokes the same service's full-resolution recipe render for only that snapshot, retaining job output paths, collision-safe naming and metadata policy. See [AI_CULLING.md](AI_CULLING.md) and [PRESET_EDITING.md](PRESET_EDITING.md).
+
+The Phase 4 source-analysis service and Phase 3 recipes below are preserved; culling does not turn either contract into a decision store. Built-in preset resolution is a separate core boundary that produces validated recipes for selected assets.
+
+## Independent source analysis
+
+Analysis = what the image is. Style = what the photographer wants. Recipe = what to do. Renderer = executes. Phase 4 implements the first boundary only; recipes remain the sole editing authority.
+
+The typed Rust PhotoAnalysis v1 and PhotoType feed an independent local AnalysisService: shared normalized unedited 1600-pixel source proxy → objective measurements → optional existing portrait-alpha provider → photo-type-specific observations → transactional SQLite analysis tables (migration 6). Common measurements are reusable across photo types. Analysis cache keys never contain recipes. No UI, cloud, style, recipe-generation or clustering dependency enters measurement code.
+
+Analysis and rendering share the bounded decoder cache/lock. New analysis masks use a separate cache namespace to avoid activating unresolved edit layers. Request reservation/cancellation/status and an inspector/JSON exporter are independent of development edits. See [PHOTO_ANALYSIS.md](PHOTO_ANALYSIS.md) for schema, thresholds, units, uncertainty and limitations.
 
 ## Preserved boundaries
 
@@ -8,7 +34,7 @@ The per-asset EditRecipe v1 is authoritative Rust: a required identity/version e
 
 Source-derived OpticsMetadata stays separate. CPU render_recipe validates an EditRecipe, resolves source/mask/profile dependencies and translates into the unchanged low-level renderer. The React state holds a recipe, not a separate render parameter vector. Legacy adjustment schemas 1/2 migrate losslessly into recipe schema 1; SQLite schema 5 adds transactional current recipes, revision history and corrupt-data recovery.
 
-Analysis = what the image is. Style = what the photographer wants. Recipe = what to do to this individual image. Renderer = executes the recipe. Future analysis/style generation remains separate and unimplemented.
+Analysis = what the image is. Style = what the photographer wants. Recipe = what to do to this individual image. Renderer = executes the recipe. Source analysis is implemented separately in Phase 4; style learning and recipe generation remain unimplemented.
 
 ## Source normalization and formats
 

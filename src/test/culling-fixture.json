@@ -1,0 +1,317 @@
+{
+  "schema_version": 2,
+  "assessment_id": "synthetic-culling-1",
+  "asset_id": "photo-1",
+  "created_at": "2026-09-04T12:00:00Z",
+  "photo_type": "portrait",
+  "ai_rating": 5,
+  "confidence": 0.86,
+  "absolute_score": 92,
+  "final_score": 92,
+  "reasons": [
+    {
+      "code": "eyes_open",
+      "severity": "positive",
+      "confidence": 0.98,
+      "subject_index": 0,
+      "measurement": null
+    },
+    {
+      "code": "eyes_open",
+      "severity": "positive",
+      "confidence": 0.98,
+      "subject_index": 1,
+      "measurement": null
+    },
+    {
+      "code": "eyes_open",
+      "severity": "positive",
+      "confidence": 0.98,
+      "subject_index": 2,
+      "measurement": null
+    },
+    {
+      "code": "eyes_open",
+      "severity": "positive",
+      "confidence": 0.98,
+      "subject_index": 3,
+      "measurement": null
+    },
+    {
+      "code": "eyes_open",
+      "severity": "positive",
+      "confidence": 0.98,
+      "subject_index": 4,
+      "measurement": null
+    }
+  ],
+  "similarity": {
+    "group_id": null,
+    "group_size": 1,
+    "preferred": false,
+    "preferred_assets": [],
+    "relative_score": null,
+    "confidence": 0,
+    "bracket_like": false,
+    "kind": "unique",
+    "similarity_score": null,
+    "exact": null
+  },
+  "culling_engine_version": "photo-culling-conservative-duplicates-v2",
+  "model_versions": [
+    {
+      "provider": "FaceDetector",
+      "model": "structured-fixture",
+      "version": "test-v1"
+    },
+    {
+      "provider": "EyeStateDetector",
+      "model": "structured-fixture",
+      "version": "test-v1"
+    }
+  ],
+  "source_analysis_id": "synthetic-analysis-1",
+  "source_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "cache_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "duplicate_content": {
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "byte_length": 12345
+  },
+  "duplicate_stamp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "membership_key": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "features": {
+    "asset_id": "photo-1",
+    "photo_type": "portrait",
+    "source_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_analysis_id": "synthetic-analysis-1",
+    "source_analysis_version": 1,
+    "feature_version": "local-face-detail-descriptor-v1",
+    "models": [
+      {
+        "provider": "FaceDetector",
+        "model": "structured-fixture",
+        "version": "test-v1"
+      },
+      {
+        "provider": "EyeStateDetector",
+        "model": "structured-fixture",
+        "version": "test-v1"
+      }
+    ],
+    "technical": {
+      "global_sharpness": 0.06,
+      "global_edge_strength": 0.04,
+      "noise_severity": {
+        "status": "available",
+        "value": 0.1,
+        "confidence": 0.65
+      },
+      "directional_detail": {
+        "status": "available",
+        "value": 0.2,
+        "confidence": 0.35
+      },
+      "subject_sharpness": {
+        "status": "available",
+        "value": 0.06,
+        "confidence": 0.9
+      }
+    },
+    "people": {
+      "faces": {
+        "status": "available",
+        "value": [
+          {
+            "index": 0,
+            "bbox": {
+              "x": 0.03,
+              "y": 0.2,
+              "width": 0.17,
+              "height": 0.3
+            },
+            "detection_confidence": 0.99,
+            "sharpness": {
+              "status": "available",
+              "value": 0.2,
+              "confidence": 0.8
+            },
+            "mean_luminance": 0.3,
+            "highlight_clip_fraction": 0,
+            "shadow_clip_fraction": 0,
+            "eyes": {
+              "status": "available",
+              "value": "open",
+              "confidence": 0.98
+            },
+            "edge_distance": 0.03,
+            "visible_fraction": 1,
+            "relevant": true
+          },
+          {
+            "index": 1,
+            "bbox": {
+              "x": 0.22,
+              "y": 0.2,
+              "width": 0.17,
+              "height": 0.3
+            },
+            "detection_confidence": 0.99,
+            "sharpness": {
+              "status": "available",
+              "value": 0.2,
+              "confidence": 0.8
+            },
+            "mean_luminance": 0.3,
+            "highlight_clip_fraction": 0,
+            "shadow_clip_fraction": 0,
+            "eyes": {
+              "status": "available",
+              "value": "open",
+              "confidence": 0.98
+            },
+            "edge_distance": 0.03,
+            "visible_fraction": 1,
+            "relevant": true
+          },
+          {
+            "index": 2,
+            "bbox": {
+              "x": 0.41000000000000003,
+              "y": 0.2,
+              "width": 0.17,
+              "height": 0.3
+            },
+            "detection_confidence": 0.99,
+            "sharpness": {
+              "status": "available",
+              "value": 0.2,
+              "confidence": 0.8
+            },
+            "mean_luminance": 0.3,
+            "highlight_clip_fraction": 0,
+            "shadow_clip_fraction": 0,
+            "eyes": {
+              "status": "available",
+              "value": "open",
+              "confidence": 0.98
+            },
+            "edge_distance": 0.03,
+            "visible_fraction": 1,
+            "relevant": true
+          },
+          {
+            "index": 3,
+            "bbox": {
+              "x": 0.6000000000000001,
+              "y": 0.2,
+              "width": 0.17,
+              "height": 0.3
+            },
+            "detection_confidence": 0.99,
+            "sharpness": {
+              "status": "available",
+              "value": 0.2,
+              "confidence": 0.8
+            },
+            "mean_luminance": 0.3,
+            "highlight_clip_fraction": 0,
+            "shadow_clip_fraction": 0,
+            "eyes": {
+              "status": "available",
+              "value": "open",
+              "confidence": 0.98
+            },
+            "edge_distance": 0.03,
+            "visible_fraction": 1,
+            "relevant": true
+          },
+          {
+            "index": 4,
+            "bbox": {
+              "x": 0.79,
+              "y": 0.2,
+              "width": 0.17,
+              "height": 0.3
+            },
+            "detection_confidence": 0.99,
+            "sharpness": {
+              "status": "available",
+              "value": 0.2,
+              "confidence": 0.8
+            },
+            "mean_luminance": 0.3,
+            "highlight_clip_fraction": 0,
+            "shadow_clip_fraction": 0,
+            "eyes": {
+              "status": "available",
+              "value": "open",
+              "confidence": 0.98
+            },
+            "edge_distance": 0.03,
+            "visible_fraction": 1,
+            "relevant": true
+          }
+        ],
+        "confidence": 0.9
+      },
+      "softest_subject": 0,
+      "face_sharpness_spread": {
+        "status": "available",
+        "value": 0,
+        "confidence": 0.9
+      },
+      "outlier_subjects": []
+    },
+    "framing": {
+      "subject_edge_distance": {
+        "status": "available",
+        "value": 0.02,
+        "confidence": 0.9
+      },
+      "subject_occupancy": {
+        "status": "available",
+        "value": 0.6,
+        "confidence": 0.9
+      }
+    },
+    "composition": {
+      "level_angle": {
+        "status": "available",
+        "value": 0,
+        "confidence": 0.5
+      },
+      "aspect_ratio": 1.5
+    },
+    "exposure": {
+      "median_luminance": 0.3,
+      "highlight_clip_fraction": 0.001,
+      "shadow_clip_fraction": 0.001,
+      "tonal_range": 0.6,
+      "subject_background_ev": {
+        "status": "available",
+        "value": 0,
+        "confidence": 0.9
+      }
+    },
+    "descriptor": {
+      "difference_hash": "55aa55aa55aa55aa",
+      "luminance_grid": [
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5,
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5,
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5,
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5,
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5
+      ],
+      "color_grid": [
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5,
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5,
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5,
+        0.1, 0.5, 0.1, 0.5, 0.1, 0.5
+      ],
+      "aspect_ratio": 1.5,
+      "capture_timestamp": "2026:09:04 12:00:00",
+      "camera": "Synthetic Camera",
+      "mean_luminance": 0.3
+    }
+  }
+}

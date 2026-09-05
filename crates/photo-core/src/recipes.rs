@@ -34,6 +34,7 @@ pub enum RevisionReason {
     Restore,
     Imported,
     Snapshot,
+    BuiltInPreset,
 }
 impl RevisionReason {
     fn name(self) -> &'static str {
@@ -47,6 +48,7 @@ impl RevisionReason {
             Self::Restore => "restore",
             Self::Imported => "imported",
             Self::Snapshot => "snapshot",
+            Self::BuiltInPreset => "built_in_preset",
         }
     }
 }

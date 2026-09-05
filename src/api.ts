@@ -29,6 +29,117 @@ async function call<T>(
 }
 
 export const api = {
+  batchContextState: (
+    jobId: string,
+    photoType: import("./analysis").PhotoType,
+  ) =>
+    call<import("./batch-context").BatchContextState>("batch_context_state", {
+      jobId,
+      photoType,
+    }),
+  runBatchContext: (request: import("./batch-context").BatchContextRequest) =>
+    call<import("./batch-context").BatchContextState>("run_batch_context", {
+      request,
+    }),
+  batchContextProgress: (
+    jobId: string,
+    photoType: import("./analysis").PhotoType,
+  ) =>
+    call<import("./batch-context").BatchContextProgress | null>(
+      "batch_context_progress",
+      { jobId, photoType },
+    ),
+  cancelBatchContext: (requestId: string) =>
+    call<void>("cancel_batch_context", { requestId }),
+  builtinPresets: () =>
+    call<import("./presets").BuiltInPreset[]>("builtin_presets"),
+  presetEditingState: (jobId: string) =>
+    call<import("./presets").PresetEditingState>("preset_editing_state", {
+      jobId,
+    }),
+  applyBuiltInPreset: (
+    jobId: string,
+    presetId: import("./presets").BuiltInPresetId,
+    assetIds: string[],
+  ) =>
+    call<import("./presets").PresetApplyResult>("apply_builtin_preset", {
+      jobId,
+      presetId,
+      assetIds,
+    }),
+  cullingOverview: (jobId: string, photoType: import("./analysis").PhotoType) =>
+    call<import("./culling").CullingOverview>("culling_overview", {
+      jobId,
+      photoType,
+    }),
+  cullingDetail: (
+    jobId: string,
+    assetId: string,
+    photoType: import("./analysis").PhotoType,
+  ) =>
+    call<import("./culling").CullingState>("culling_detail", {
+      jobId,
+      assetId,
+      photoType,
+    }),
+  cullingProgress: (jobId: string) =>
+    call<import("./culling").CullingProgress | null>("culling_progress", {
+      jobId,
+    }),
+  runCulling: (request: import("./culling").CullingRequest) =>
+    call<import("./culling").CullingProgress>("run_culling", { request }),
+  cancelCulling: (requestId: string) =>
+    call<void>("cancel_culling", { requestId }),
+  cullingRating: (
+    jobId: string,
+    assetId: string,
+    photoType: import("./analysis").PhotoType,
+    rating: import("./culling").Stars | null,
+  ) => call<void>("culling_rating", { jobId, assetId, photoType, rating }),
+  cullingSelectAsset: (jobId: string, assetId: string, selected: boolean) =>
+    call<void>("culling_select_asset", { jobId, assetId, selected }),
+  cullingSelectAssets: (
+    jobId: string,
+    photoType: import("./analysis").PhotoType,
+    assetIds: string[],
+  ) => call<void>("culling_select_assets", { jobId, photoType, assetIds }),
+  cullingSelectRatings: (
+    jobId: string,
+    photoType: import("./analysis").PhotoType,
+    ratings: import("./culling").Stars[],
+    relationshipFilter: import("./culling").RelationshipFilter = "all",
+    selectedOnly = false,
+    excludeExactDuplicates = true,
+  ) =>
+    call<void>("culling_select_ratings", {
+      jobId,
+      photoType,
+      ratings,
+      relationshipFilter,
+      selectedOnly,
+      excludeExactDuplicates,
+    }),
+  getAnalysis: (
+    jobId: string,
+    assetId: string,
+    photoType: import("./analysis").PhotoType,
+  ) =>
+    call<import("./analysis").AnalysisState>("get_analysis", {
+      jobId,
+      assetId,
+      photoType,
+    }),
+  analyzeAsset: (request: import("./analysis").AnalysisRequest) =>
+    call<import("./analysis").AnalysisState>("analyze_asset", { request }),
+  cancelAnalysis: (requestId: string) =>
+    call<void>("cancel_analysis", { requestId }),
+  invalidateAnalysis: (jobId: string, assetId: string) =>
+    call<void>("invalidate_analysis", { jobId, assetId }),
+  exportAnalysis: (
+    jobId: string,
+    assetId: string,
+    photoType: import("./analysis").PhotoType,
+  ) => call<string>("export_analysis", { jobId, assetId, photoType }),
   saveRecipe: (
     jobId: string,
     assetId: string,

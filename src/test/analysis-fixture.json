@@ -1,0 +1,327 @@
+{
+  "analysis_id": "analysis-fixture-1",
+  "asset_id": "photo-1",
+  "common": {
+    "color": {
+      "average_chroma": 0,
+      "dominant_families": [
+        {
+          "fraction": 0,
+          "name": "red"
+        },
+        {
+          "fraction": 0,
+          "name": "orange"
+        },
+        {
+          "fraction": 0,
+          "name": "yellow"
+        },
+        {
+          "fraction": 0,
+          "name": "green"
+        },
+        {
+          "fraction": 0,
+          "name": "aqua"
+        },
+        {
+          "fraction": 0,
+          "name": "blue"
+        },
+        {
+          "fraction": 0,
+          "name": "purple"
+        },
+        {
+          "fraction": 0,
+          "name": "magenta"
+        },
+        {
+          "fraction": 1,
+          "name": "neutral"
+        }
+      ],
+      "green_magenta_balance": 0,
+      "high_saturation_fraction": 0,
+      "low_saturation_fraction": 1,
+      "mean_rgb": [0.4901961088180542, 0.4901961088180542, 0.4901961088180542],
+      "mean_saturation": 0,
+      "spatial_cast_variation": 0,
+      "warm_cool_balance": 0
+    },
+    "composition": {
+      "aspect_ratio": 2,
+      "horizon": {
+        "reason": "Line evidence alone does not identify a semantic horizon",
+        "status": "unavailable"
+      },
+      "horizontal_line": {
+        "reason": "No sufficiently long straight reference",
+        "status": "unavailable"
+      },
+      "keystone_indicator": {
+        "reason": "Converging-line geometry is not implemented",
+        "status": "unavailable"
+      },
+      "orientation": "landscape",
+      "vertical_line": {
+        "confidence": 0.8234374999999999,
+        "status": "available",
+        "value": {
+          "angle_degrees": 0,
+          "position": 0.5,
+          "support_fraction": 0.96875
+        }
+      }
+    },
+    "detail": {
+      "blur_likelihood": {
+        "reason": "Low texture and optical blur cannot be reliably separated by global edge energy",
+        "status": "unavailable"
+      },
+      "edge_strength": 0.003136230130044241,
+      "laplacian_rms": 0.04978610987018885,
+      "motion_blur_likelihood": {
+        "reason": "No directional motion model configured",
+        "status": "unavailable"
+      },
+      "noise": {
+        "confidence": 0.6396825396825396,
+        "status": "available",
+        "value": {
+          "chroma_sigma": 0,
+          "flat_region_fraction": 0.9841269841269841,
+          "luminance_sigma": 0,
+          "severity": 0
+        }
+      },
+      "sharpness_grid": [
+        0, 0.009189883636873822, 0, 0, 0.009189883636873822, 0, 0,
+        0.009189883636873822, 0
+      ]
+    },
+    "dynamic_range": {
+      "high_contrast_tendency": {
+        "confidence": 0.5,
+        "status": "available",
+        "value": 0
+      },
+      "interquartile_range": 0.3951159951159951,
+      "low_contrast_tendency": {
+        "confidence": 0.5,
+        "status": "available",
+        "value": 0
+      },
+      "percentile_ev_span": 2.8763175456000476,
+      "percentile_range": 0.3951159951159951
+    },
+    "exposure": {
+      "any_channel_highlight_clip_fraction": 0,
+      "classification": {
+        "confidence": 0.45,
+        "status": "available",
+        "value": "underexposed"
+      },
+      "highlight_clip_fraction": 0,
+      "highlight_fraction": 0,
+      "mean_luminance": 0.2588285654783249,
+      "median_luminance": 0.06129426129426129,
+      "midtone_fraction": 0.5,
+      "near_highlight_clip_fraction": 0,
+      "near_shadow_clip_fraction": 0,
+      "percentiles": {
+        "p01": 0.06129426129426129,
+        "p05": 0.06129426129426129,
+        "p25": 0.06129426129426129,
+        "p50": 0.06129426129426129,
+        "p75": 0.4564102564102564,
+        "p95": 0.4564102564102564,
+        "p99": 0.4564102564102564
+      },
+      "shadow_clip_fraction": 0,
+      "shadow_fraction": 0.5
+    },
+    "scene": {
+      "brightest_region": {
+        "x": 0.8333333333333334,
+        "y": 0.8333333333333334
+      },
+      "high_key_tendency": {
+        "confidence": 0.4,
+        "status": "available",
+        "value": 0
+      },
+      "indoor_outdoor": {
+        "reason": "No reliable local scene classifier configured",
+        "status": "unavailable"
+      },
+      "low_key_tendency": {
+        "confidence": 0.4,
+        "status": "available",
+        "value": 0.5
+      },
+      "low_light_tendency": {
+        "confidence": 0.25,
+        "status": "available",
+        "value": 0.5913715913715913
+      }
+    },
+    "source": {
+      "aperture": null,
+      "camera_make": null,
+      "camera_model": null,
+      "capture_timestamp": null,
+      "color_representation": "linear-sRGB-D65; color metrics use display-sRGB",
+      "decoder": "analysis-test",
+      "exif_orientation": null,
+      "focal_length": null,
+      "height": 64,
+      "iso": null,
+      "lens": null,
+      "metadata_height": 64,
+      "metadata_width": 128,
+      "raw": false,
+      "shutter_speed": null,
+      "width": 128
+    },
+    "warnings": [
+      "No embedded RGB ICC profile: assumed sRGB (PNG gamma/chromaticity-only tags are not color-managed)"
+    ]
+  },
+  "confidence": {
+    "reason": "No meaningful aggregate confidence; inspect individual observations",
+    "status": "unavailable"
+  },
+  "created_at": "2026-09-04T12:00:00Z",
+  "diagnostics": {
+    "analyzers": [
+      {
+        "analyzer": "exposure/color/detail/straight-lines",
+        "message": "Source proxy; straight lines are candidate level references, not semantic horizons",
+        "status": "complete"
+      },
+      {
+        "analyzer": "portrait-alpha",
+        "message": "No instance count or calibrated confidence from alpha",
+        "status": "complete"
+      },
+      {
+        "analyzer": "faces/sky/semantic-scene",
+        "message": "No additional models introduced",
+        "status": "unavailable"
+      }
+    ],
+    "common_cache_reused": false,
+    "duration_ms": 32,
+    "engine_version": "photo-analysis-cpu-v1",
+    "providers": [
+      {
+        "model": "portrait-alpha",
+        "provider": "SegmentationProvider",
+        "version": "half-test-v1"
+      }
+    ],
+    "warnings": [
+      "No embedded RGB ICC profile: assumed sRGB (PNG gamma/chromaticity-only tags are not color-managed)",
+      "Portrait-only alpha matte; inspect hair, clothing and non-portrait results. Confidence is not provided by this model."
+    ]
+  },
+  "lighting": {
+    "background_light_level": {
+      "confidence": null,
+      "status": "available",
+      "value": 0.43171325139701366
+    },
+    "backlighting_tendency": {
+      "confidence": 0.4,
+      "status": "available",
+      "value": 0.7717516417377178
+    },
+    "mixed_lighting_tendency": {
+      "confidence": 0.25,
+      "status": "available",
+      "value": 0
+    },
+    "overall_light_level": 0.2588285654783249,
+    "subject_background_ev_difference": {
+      "confidence": null,
+      "status": "available",
+      "value": -2.3152549252131536
+    },
+    "subject_light_level": {
+      "confidence": null,
+      "status": "available",
+      "value": 0.08594387955963612
+    }
+  },
+  "photo_type": "portrait",
+  "schema_version": 1,
+  "source_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "subjects": {
+    "faces": {
+      "reason": "Face detector not installed; MODNet alpha cannot count or locate faces",
+      "status": "unavailable"
+    },
+    "measurements": {
+      "confidence": null,
+      "status": "available",
+      "value": {
+        "background": {
+          "edge_strength": 0.0015669785070144826,
+          "luminance_stddev": 0.09565421562540262,
+          "mean_luminance": 0.43171325139701366,
+          "mean_rgb": [
+            0.6789215877652168, 0.6789215877652168, 0.6789215877652168
+          ]
+        },
+        "geometry": {
+          "area_fraction": 0.5,
+          "bbox": {
+            "height": 1,
+            "width": 0.5,
+            "x": 0,
+            "y": 0
+          },
+          "center_distance": 0.3461733088316222,
+          "centroid": {
+            "x": 0.255218505859375,
+            "y": 0.5
+          },
+          "edge_proximity": 0,
+          "top_margin": 0
+        },
+        "mask_reference": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "subject": {
+          "edge_strength": 0.0014720101126499685,
+          "luminance_stddev": 0.09565421562533857,
+          "mean_luminance": 0.08594387955963612,
+          "mean_rgb": [
+            0.30147062987089157, 0.30147062987089157, 0.30147062987089157
+          ]
+        },
+        "subject_background_ev_difference": -2.3152549252131536
+      }
+    },
+    "subject_count": {
+      "reason": "Alpha matte is not an instance detector",
+      "status": "unavailable"
+    },
+    "subject_present": {
+      "confidence": null,
+      "status": "available",
+      "value": true
+    }
+  },
+  "type_specific": {
+    "measurements": {
+      "backlighting": {
+        "confidence": 0.4,
+        "status": "available",
+        "value": 0.7717516417377178
+      },
+      "face_provider": "unavailable; no face model installed"
+    },
+    "photo_type": "portrait"
+  }
+}

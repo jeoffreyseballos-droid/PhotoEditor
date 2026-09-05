@@ -1,4 +1,5 @@
 //! Deterministic CPU renderer, independent of desktop state and SQLite.
+pub mod analysis_input;
 pub mod decode;
 pub mod masks;
 pub mod optics;

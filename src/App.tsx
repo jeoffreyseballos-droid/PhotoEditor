@@ -3,10 +3,15 @@ import { desktopAvailable } from "./api";
 import { HomeScreen } from "./screens/HomeScreen";
 import { JobScreen } from "./screens/JobScreen";
 import { NewJobForm } from "./components/NewJobForm";
+import { PresetsScreen } from "./screens/PresetsScreen";
+import { StandaloneTrainingStudioScreen } from "./screens/StandaloneTrainingStudioScreen";
 
 export function App() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [mainView, setMainView] = useState<"home" | "training" | "presets">(
+    "home",
+  );
   const desktop = desktopAvailable();
 
   return (
@@ -22,13 +27,40 @@ export function App() {
         </div>
         <nav aria-label="Main navigation">
           <button
-            className={!jobId ? "nav-item active" : "nav-item"}
+            className={
+              !jobId && mainView === "home" ? "nav-item active" : "nav-item"
+            }
             onClick={() => {
               setJobId(null);
               setCreating(false);
+              setMainView("home");
             }}
           >
             <span aria-hidden="true">⌂</span> Home
+          </button>
+          <button
+            className={
+              !jobId && mainView === "training" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => {
+              setJobId(null);
+              setCreating(false);
+              setMainView("training");
+            }}
+          >
+            <span aria-hidden="true">✦</span> Training Studio
+          </button>
+          <button
+            className={
+              !jobId && mainView === "presets" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => {
+              setJobId(null);
+              setCreating(false);
+              setMainView("presets");
+            }}
+          >
+            <span aria-hidden="true">◒</span> Presets
           </button>
           {jobId && (
             <div className="nav-item active" aria-current="page">
@@ -63,6 +95,13 @@ export function App() {
           />
         ) : jobId ? (
           <JobScreen key={jobId} jobId={jobId} />
+        ) : mainView === "training" ? (
+          <StandaloneTrainingStudioScreen
+            onClose={() => setMainView("home")}
+            onViewPresets={() => setMainView("presets")}
+          />
+        ) : mainView === "presets" ? (
+          <PresetsScreen onClose={() => setMainView("home")} />
         ) : (
           <HomeScreen
             onNew={() => setCreating(true)}

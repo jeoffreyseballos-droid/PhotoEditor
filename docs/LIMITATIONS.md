@@ -1,3 +1,11 @@
+# Phase 8 limitations
+
+Training Studio v1 learns ten global creative controls through a regularized linear model. It does not learn contrast, dehaze, curves, HSL, detail, vignette, crop/rotation, local masks, retouching, pixel generation, or a photographer identity. Its deterministic tonal/color/structure loss is deliberately inspectable but is not a modern learned perceptual metric and does not fully align arbitrary crops or local edits. Centered crop comparison can misdiagnose off-center reframing. Target confidence is heuristic evidence, not calibrated probability.
+
+Target fitting uses a bounded proxy and sequential staged coordinate search. This protects memory and determinism but can settle on correlated slider combinations, especially highlights/whites, shadows/blacks, or saturation/vibrance. Low-confidence targets are excluded by default; small or single-scene datasets can have weak or impossible leakage-safe holdout. A result that does not beat the held-out mean-recipe baseline is explicitly reported and must not be described as successful personal-style learning.
+
+The local portrait sample folder contains camera RAW/JPEG companions, not identified photographer-finished before/after edits, so no real personal style was trained or visually accepted in Phase 8. Synthetic renderer recovery proves plumbing and approximate control recovery, not photographic generalization. Genuine acceptance still requires varied edited references, held-out Original/AI/Reference inspection, and photographer judgment. The app stores full local paths in the private SQLite dataset because it must reopen pairs, but published style metadata omits them. Local database/cache encryption, cache quota/eviction, automatic orphan cleanup, signed packages, GPU training, macOS runtime acceptance, and continuous correction retraining remain unavailable.
+
 # Phase 7 limitations
 
 ## Adaptive style scope
@@ -8,7 +16,7 @@ The v1 feature vector is limited to reliable Phase 4 measurements and Phase 6 re
 
 Selection scoping, persistence and stale detection are implemented, but real-photo visual quality still requires manual review. One failed asset is marked Needs Review and left unchanged; confidence is evidence metadata, not a calibrated probability. Preview/export math remains the existing deterministic CPU renderer, with its documented reduced-preview versus full-resolution differences.
 
-Phase 8 training is intentionally absent: no RAW/reference pairing, optimization loop, photographer feedback learning, Training Studio, cloud service, licensing or production signing is included. A package can be replaced only through the validated local artifact format documented in [TRAINED_STYLES.md](TRAINED_STYLES.md).
+The bundled Adaptive Natural development package is still not trained from photographer images. Phase 8 adds local RAW/reference pairing, target optimization, persisted validation feedback, and Training Studio package authoring through the validated artifact format documented in [TRAINED_STYLES.md](TRAINED_STYLES.md), but cloud services, automatic feedback retraining, licensing, and production signing remain absent.
 
 # Phase 6 limitations
 
@@ -126,6 +134,6 @@ Same-source fingerprints still use canonical path/size/mtime rather than reading
 
 ## Deferred
 
-Still deferred after Phase 7: Phase 8 trained-style authoring/training, automatic semantic scene classifiers, Lightroom/XMP imports, face beauty/generative editing, PhotographerApp APIs, auth, cloud, licensing/billing, GPU providers and production installers/signing. Source analysis, culling, batch context, adaptive creative recipes and deterministic rendering are implemented as separate boundaries.
+Still deferred after Phase 8: automatic semantic scene classifiers, Lightroom/XMP imports, face beauty/generative editing, continuous correction learning, PhotographerApp APIs, auth, cloud, licensing/billing, GPU providers and production installers/signing. Source analysis, culling, batch context, local recipe-target style training, adaptive creative recipes and deterministic rendering are implemented as separate boundaries.
 
 Ship the executable with raw/, exiftool/ and toolkit/ resources and their licenses. The MODNet model is Apache-2.0; ONNX Runtime is MIT; the unmodified Lensfun database is CC BY-SA 3.0. Distribution/license-obligation review remains a release task.

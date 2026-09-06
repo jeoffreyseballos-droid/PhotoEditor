@@ -8,6 +8,7 @@ pub use development::*;
 pub mod recipe;
 pub mod toolkit;
 pub mod trained_style;
+pub mod training;
 pub use recipe::*;
 use serde::{Deserialize, Serialize};
 use std::{future::Future, path::PathBuf, pin::Pin};

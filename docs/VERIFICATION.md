@@ -1,3 +1,59 @@
+# Phase 8 folder import and matching progress — 2026-09-06
+
+The folder → IPC → persisted selections → candidate → validator path is covered by a generated 47/47 dataset. Natural numeric ordering preserves renamed exports from `(1 of 47)` through `(47 of 47)`, all candidates reach the existing structural validator, and the completed result survives repository reload. The exact user-reported one-image outcome was not reproduced. Inspection did find an overlapping read/modify/save race between imports and unguarded picker operations; the UI and service now serialize imports, with a concurrent Before/After regression. No count-only correction or one-pair special case is used.
+
+Matching exposes one bounded snapshot through IPC. The UI immediately displays progress, polls serially at 250 ms, shows actual stage counts and a stage percentage, disables conflicting actions, and supports cancellation/retry. The structural worker holds candidate state in memory and commits only the completed dataset. Cancellation preserves an already validated dataset; file checks, hashing, and structural validation share the cancellation token. Failed individual pairs remain rejected/unusable for review, never Ready. Equal-count renamed folders use natural-order candidates; unequal counts do not shift by index. Manual mappings take priority over order fallback. First/last alignment is derived from structural evidence. Pair previews no longer require target fitting. Successful rows are collapsed and Dataset Ready includes the next Train Style action.
+
+Frontend verification: **88 passed** across 9 files, including 7 Training Studio tests; production TypeScript/Vite build passed. Formatting and lint passed. Elevated Vite execution was approved in this session; the prior sandbox startup limitation is no longer a verification blocker. Rust/native final results are recorded after completion below.
+
+Limitations: the 47-image test uses generated lossless references, not the photographer's actual edited folder. Structural checks remain the existing conservative heuristic; the 1,000-candidate test validates ordering, no-shift handling and bounded progress payloads, not full-resolution throughput. The percentage is within the named stage, not an estimated overall time-to-finish. Existing Phase 7 inference and Phase 8 model/target estimation remain in use.
+
+# Earlier Phase 8 Training Studio verification
+
+Date: 2026-09-05, Windows x64 MSVC, Rust 1.98.1, Node 22.20.0. All work and generated artifacts remained inside PhotoEditor. No PhotographerApp changes, commits, or pushes.
+
+| Check                                                   | Result                                                                                                                                 |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run format:check`                                  | Passed                                                                                                                                 |
+| `npm run lint`                                          | Passed                                                                                                                                 |
+| `npm test`                                              | **85 tests discovered** (14 development, 4 Training Studio, 1 Presets); execution blocked below by managed Vite/esbuild sandbox access |
+| `npm run build`                                         | TypeScript phase passed; Vite bundle phase blocked below by managed sandbox access                                                     |
+| `cargo fmt --all -- --check`                            | Passed                                                                                                                                 |
+| `cargo test -p photo-core -p photo-contracts --locked`  | **240 passed**, no failures; one opt-in 42 MP case ignored by this command                                                             |
+| `cargo clippy --workspace --all-targets -- -D warnings` | Passed                                                                                                                                 |
+| Explicit release 42 MP TIFF regression                  | **1 passed**, 2.23 s test body                                                                                                         |
+| Windows x64 no-bundle desktop build                     | Passed                                                                                                                                 |
+
+The standard Rust total is 240: 36 contract tests and 204 photo-core tests. Phase 8 adds matching progress, cancellation, natural-order folder import, manual-mapping preservation, and large-dataset regressions alongside standalone before/after persistence and hidden-job isolation. The explicit large-image regression also passed, preserving 6000×7000 output dimensions.
+
+The final frontend rerun was attempted after the standalone Training Studio and Presets UI changes. `npm test` and `npm run build` reached Vite/esbuild startup but the managed sandbox denied reading `../../..` while resolving `vite.config.ts`; the required elevated retry was refused by the host usage-limit gate. `npx tsc -b`, `npm run format:check`, and `npm run lint` passed after those changes. No test or build failure was observed in project code.
+
+### Synthetic target recovery
+
+A 256×192 structured PNG source was rendered through the production deterministic renderer with known `+0.800 EV` exposure and `+500 K` temperature delta into a lossless TIFF reference. The isolated staged target optimizer recovered `+0.802 EV` and `+500 K`. Its combined photographic loss fell from `0.07113` for neutral to `0.00019`. This confirms deterministic target plumbing and approximate control recovery on a generated case; it is not real-photo style evidence.
+
+Training regressions also cover Bright/Airy, Moody, and Neutral target directions; differentiated held-out dark/bright predictions; confidence weights; persisted feature mean/std; safe output bounds; deterministic scene-aware splits with no group leakage; conservative ambiguous matching; full target-cache dependency identity; small-dataset warnings/run persistence; version preservation; canonical Phase 7 package loading; and cancellation without package publication. Frontend regressions cover the top-level Job-independent workflow, explicit Before/After image and folder inputs, Match / Validate Dataset, alignment diagnostics, Review Matches pair inspection with Source/AI/Target/Reference previews, exclusion, feedback, progress/cancellation, baseline reporting, and the Presets library.
+
+### Synthetic throughput benchmark
+
+Release-mode `training_benchmark` used programmatic 96×72 inputs and deliberately tiny 64 px target proxies so all requested dataset sizes can run as a fast scaling check. Preparation is excluded. Times are milliseconds:
+
+| Pairs | Cached feature materialization | Target estimation | Model fitting | Validation prediction | Package export |
+| ----: | -----------------------------: | ----------------: | ------------: | --------------------: | -------------: |
+|    10 |                              0 |                79 |             4 |                     0 |              6 |
+|    25 |                              0 |               194 |            14 |                     0 |             15 |
+|    50 |                              0 |               382 |            28 |                     0 |              7 |
+|   100 |                              0 |               764 |            44 |                     0 |              6 |
+|   250 |                              0 |             1,970 |           116 |                     0 |              6 |
+
+The benchmark exercises the real target optimizer, trainer, validation prediction, and package loader/export path, but its small proxies and synthetic references do not predict normal 1600 px runtime or photographic quality.
+
+### Real-photo acceptance status
+
+The accessible `test-photos/Portraits` tree contains 53 files: 27 CR3 and 26 camera JPEG companions. None is explicitly identified as a photographer-finished reference edit. They were therefore not silently treated as training targets, and no real personal-style result or held-out visual match is claimed. Real acceptance remains pending genuine before/after references and photographer Original / AI Edit / Reference review.
+
+Latest native release executable: `target/release/photo-editor-desktop.exe`, **23,008,256 bytes**, SHA-256 `825906B67A387CD6D4494D9B044B44199776D15797559382060DF5B84466FFE4`, rebuilt 2026-09-05 22:43:03 local. The earlier no-bundle desktop packaging check also passed; this final native compile includes the Phase 8 preview/cache changes. It is unsigned and not installer, signing, distribution, macOS, or interactive native UI acceptance.
+
 # Phase 7 trained styles / adaptive AI editing verification
 
 Date: 2026-09-05, Windows x64 MSVC, Rust 1.98.1, Node 22.20.0. All Phase 7 work, package resources, temporary acceptance state and generated previews stayed inside PhotoEditor. No PhotographerApp changes, commits or pushes.
@@ -34,7 +90,7 @@ This is evidence of adaptive per-image behavior and renderer integration only; i
 
 - Contract tests cover valid package loading, canonical checksums, unsupported package/feature versions, corrupt model dimensions, NaN rejection, safe output bounds and prediction validation.
 - Core tests cover dark/bright and warm/cool adaptation, BatchContext directionality, three-frame independent recipes, deterministic repeated conversion, objective optics/geometry preservation, trained-style provenance, built-in replacement, exact 52-asset/5-selection scope (five predictions/recipe updates, 47 untouched) and nonfatal per-asset failure continuation.
-- Frontend tests cover the separate AI style chooser, exact persisted selection IDs, two adaptive predictions with rendered edited previews, collapsed inspector details and cancellation without preview work. Existing POP/WARM/BLACK & WHITE, mask, export, cancellation and debounce assertions remain present.
+- Frontend tests cover the separate AI style chooser, exact persisted selection IDs, two adaptive predictions with rendered edited previews, collapsed inspector details and cancellation without preview work. Training Studio covers source/AI/target/reference validation previews, held-out style application, explicit editing handoff, feedback and cancellation. Existing POP/WARM/BLACK & WHITE, mask, export, cancellation and debounce assertions remain present.
 - Preview cache identity continues to use the effective recipe/dependency hash; style/package/context/prediction changes therefore invalidate naturally without a special AI export path.
 
 Distinct Rust total for the standard command is **220** (33 contract + 187 core tests); the separate release 42 MP regression adds one passing test. No remaining failures.

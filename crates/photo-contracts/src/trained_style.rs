@@ -83,6 +83,12 @@ pub struct LinearOutput {
 #[serde(deny_unknown_fields)]
 pub struct LinearStyleModel {
     pub feature_names: Vec<String>,
+    /// Training-time feature normalization. Empty means identity normalization for
+    /// legacy/development packages; trained packages persist one entry per feature.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub feature_means: Vec<f32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub feature_scales: Vec<f32>,
     pub outputs: Vec<LinearOutput>,
     pub base_confidence: f32,
 }
@@ -116,7 +122,7 @@ pub struct StyleRules {
     pub output_bounds: BTreeMap<StyleControl, StyleOutputBound>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StyleMetadata {
     pub schema_version: u32,
@@ -126,6 +132,22 @@ pub struct StyleMetadata {
     pub development_only: bool,
     pub trained_from_user_photos: bool,
     pub training_provenance: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub training: Option<TrainingPackageProvenance>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrainingPackageProvenance {
+    pub dataset_identity: String,
+    pub training_pairs: u32,
+    pub validation_pairs: u32,
+    pub feature_schema: String,
+    pub target_recipe_schema: u32,
+    pub trainer_version: String,
+    pub renderer_version: String,
+    pub trained_at: String,
+    pub metrics_summary: BTreeMap<String, f32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -308,6 +330,15 @@ impl StyleModel {
             ));
         }
         let StyleModelKind::LinearV1(model) = &self.model;
+        let normalization_absent =
+            model.feature_means.is_empty() && model.feature_scales.is_empty();
+        let normalization_valid = model.feature_means.len() == expected_features.len()
+            && model.feature_scales.len() == expected_features.len()
+            && model.feature_means.iter().all(|value| value.is_finite())
+            && model
+                .feature_scales
+                .iter()
+                .all(|value| value.is_finite() && *value > 1e-6);
         if self.model_version.is_empty()
             || model.feature_names.len() != expected_features.len()
             || model.feature_names.len() > MAX_STYLE_FEATURES
@@ -319,6 +350,7 @@ impl StyleModel {
             || !model.base_confidence.is_finite()
             || !(0.0..=1.0).contains(&model.base_confidence)
             || model.outputs.is_empty()
+            || (!normalization_absent && !normalization_valid)
         {
             return Err(StyleError::InvalidModel(
                 "Linear model feature layout or confidence is invalid".into(),
@@ -378,6 +410,24 @@ impl StyleMetadata {
             || chrono::DateTime::parse_from_rfc3339(&self.created_at).is_err()
         {
             return Err(StyleError::CorruptPackage("Invalid style metadata".into()));
+        }
+        if let Some(training) = &self.training {
+            if !digest(&training.dataset_identity)
+                || training.training_pairs == 0
+                || training.feature_schema != STYLE_FEATURE_SCHEMA_V1
+                || training.target_recipe_schema != RECIPE_SCHEMA_VERSION
+                || !training
+                    .metrics_summary
+                    .values()
+                    .all(|value| value.is_finite())
+                || !text(&training.trainer_version, 128)
+                || !text(&training.renderer_version, 128)
+                || chrono::DateTime::parse_from_rfc3339(&training.trained_at).is_err()
+            {
+                return Err(StyleError::CorruptPackage(
+                    "Invalid training provenance metadata".into(),
+                ));
+            }
         }
         Ok(())
     }

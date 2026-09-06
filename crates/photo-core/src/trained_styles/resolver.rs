@@ -44,11 +44,23 @@ impl StyleResolver for LinearStyleResolver {
             ));
         }
         let StyleModelKind::LinearV1(model) = &package.model.model;
+        let normalized = features
+            .values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| {
+                if model.feature_means.is_empty() {
+                    *value
+                } else {
+                    (*value - model.feature_means[index]) / model.feature_scales[index]
+                }
+            })
+            .collect::<Vec<_>>();
         let mut adjustments = PredictedCreativeAdjustments::default();
         let mut bounded_controls = Vec::new();
         for output in &model.outputs {
             let mut value = output.intercept;
-            for (index, feature) in features.values.iter().enumerate() {
+            for (index, feature) in normalized.iter().enumerate() {
                 value += if features.available[index] {
                     feature * output.weights[index]
                 } else {

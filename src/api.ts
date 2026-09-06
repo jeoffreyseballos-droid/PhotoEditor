@@ -29,6 +29,144 @@ async function call<T>(
 }
 
 export const api = {
+  matchValidateTrainingDataset: (datasetId: string, requestId: string) =>
+    call<import("./training").TrainingDataset>(
+      "match_validate_training_dataset",
+      { datasetId, requestId },
+    ),
+  trainingMatchingProgress: (requestId: string) =>
+    call<import("./training").MatchingProgress | null>(
+      "training_matching_progress",
+      { requestId },
+    ),
+  cancelTrainingMatching: (requestId: string) =>
+    call<void>("cancel_training_matching", { requestId }),
+  trainingDatasets: (jobId?: string) =>
+    call<import("./training").TrainingDataset[]>("training_datasets", {
+      ...(jobId ? { jobId } : {}),
+    }),
+  createTrainingDataset: (
+    jobIdOrStyle: string,
+    styleOrPhoto: string | import("./analysis").PhotoType,
+    legacyPhotoType?: import("./analysis").PhotoType,
+  ) => {
+    const standalone = legacyPhotoType === undefined;
+    const styleName = standalone ? jobIdOrStyle : (styleOrPhoto as string);
+    const photoType = (
+      standalone ? styleOrPhoto : legacyPhotoType
+    ) as import("./analysis").PhotoType;
+    return call<import("./training").TrainingDataset>(
+      "create_training_dataset",
+      {
+        request: {
+          job_id: standalone ? "" : jobIdOrStyle,
+          style_name: styleName,
+          photo_type: photoType,
+        },
+      },
+    );
+  },
+  trainingDataset: (datasetId: string) =>
+    call<import("./training").TrainingDataset>("training_dataset", {
+      datasetId,
+    }),
+  addTrainingPair: (
+    datasetId: string,
+    sourceAssetId: string,
+    referencePath: string,
+  ) =>
+    call<import("./training").TrainingDataset>("add_training_pair", {
+      request: {
+        dataset_id: datasetId,
+        source_asset_id: sourceAssetId,
+        reference_path: referencePath,
+      },
+    }),
+  addTrainingBeforeFiles: (datasetId: string, paths: string[]) =>
+    call<import("./training").TrainingDataset>("add_training_before_files", {
+      request: { dataset_id: datasetId, paths },
+    }),
+  addTrainingAfterFiles: (datasetId: string, paths: string[]) =>
+    call<import("./training").TrainingDataset>("add_training_after_files", {
+      request: { dataset_id: datasetId, paths },
+    }),
+  addTrainingBeforeFolder: (datasetId: string, folder: string) =>
+    call<import("./training").TrainingDataset>("add_training_before_folder", {
+      request: { dataset_id: datasetId, folder },
+    }),
+  addTrainingAfterFolder: (datasetId: string, folder: string) =>
+    call<import("./training").TrainingDataset>("add_training_after_folder", {
+      request: { dataset_id: datasetId, folder },
+    }),
+  addTrainingPathPair: (
+    datasetId: string,
+    beforePath: string,
+    afterPath: string,
+  ) =>
+    call<import("./training").TrainingDataset>("add_training_path_pair", {
+      request: {
+        dataset_id: datasetId,
+        before_path: beforePath,
+        after_path: afterPath,
+      },
+    }),
+  matchTrainingDataset: (datasetId: string) =>
+    call<import("./training").AutoMatchResult>("match_training_dataset", {
+      datasetId,
+    }),
+  autoMatchTrainingFolder: (datasetId: string, folder: string) =>
+    call<import("./training").AutoMatchResult>("auto_match_training_folder", {
+      datasetId,
+      folder,
+    }),
+  setTrainingPairExcluded: (
+    datasetId: string,
+    pairId: string,
+    excluded: boolean,
+  ) =>
+    call<import("./training").TrainingDataset>("set_training_pair_excluded", {
+      datasetId,
+      pairId,
+      excluded,
+    }),
+  validateTrainingDataset: (datasetId: string) =>
+    call<import("./training").TrainingDataset>("validate_training_dataset", {
+      datasetId,
+    }),
+  runTraining: (
+    datasetId: string,
+    requestId: string,
+    config: import("./training").TrainingConfig,
+  ) =>
+    call<import("./training").TrainingRun>("run_training", {
+      request: { dataset_id: datasetId, request_id: requestId, config },
+    }),
+  trainingProgress: (datasetId: string) =>
+    call<import("./training").TrainingRun | null>("training_progress", {
+      datasetId,
+    }),
+  cancelTraining: (requestId: string) =>
+    call<void>("cancel_training", { requestId }),
+  trainingPairPreviews: (datasetId: string, pairId: string) =>
+    call<import("./training").TrainingPreviewSet>("training_pair_previews", {
+      datasetId,
+      pairId,
+    }),
+  trainingFeedback: (
+    datasetId: string,
+    pairId: string,
+    feedback: import("./training").ValidationFeedback,
+  ) =>
+    call<import("./training").TrainingDataset>("training_feedback", {
+      datasetId,
+      pairId,
+      feedback,
+    }),
+  prepareTrainingValidation: (datasetId: string) =>
+    call<import("./training").ValidationEditingSelection>(
+      "prepare_training_validation",
+      { datasetId },
+    ),
   trainedStyles: (photoType: import("./analysis").PhotoType) =>
     call<import("./trained-styles").StyleSummary[]>("trained_styles", {
       photoType,
@@ -239,6 +377,55 @@ export const api = {
       filters: [{ name: "Edit recipe JSON", extensions: ["json"] }],
     });
     return typeof result === "string" ? result : null;
+  },
+  chooseTrainingReference: async (): Promise<string | null> => {
+    const result = await open({
+      multiple: false,
+      title: "Choose the finished reference edit",
+      filters: [
+        {
+          name: "Finished photo",
+          extensions: ["jpg", "jpeg", "tif", "tiff", "png"],
+        },
+      ],
+    });
+    return typeof result === "string" ? result : null;
+  },
+  chooseTrainingFiles: async (
+    title: string,
+    role: "before" | "after" = "before",
+  ): Promise<string[]> => {
+    if (!isTauri())
+      throw new Error("File selection is available in the desktop app.");
+    const result = await open({
+      multiple: false,
+      directory: false,
+      title,
+      filters: [
+        {
+          name: "Photo files",
+          extensions:
+            role === "after"
+              ? ["jpg", "jpeg", "tif", "tiff", "png"]
+              : [
+                  "cr3",
+                  "cr2",
+                  "arw",
+                  "dng",
+                  "jpg",
+                  "jpeg",
+                  "tif",
+                  "tiff",
+                  "png",
+                ],
+        },
+      ],
+    });
+    return Array.isArray(result)
+      ? result
+      : typeof result === "string"
+        ? [result]
+        : [];
   },
   developmentMask: (request: import("./toolkit").MaskRequest) =>
     call<import("./toolkit").MaskResult>("development_mask", { request }),

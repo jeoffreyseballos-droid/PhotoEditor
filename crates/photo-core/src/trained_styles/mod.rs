@@ -174,7 +174,7 @@ pub struct TrainedStyleService {
     repository: JobRepository,
     analysis: Arc<AnalysisService>,
     batch_context: Arc<BatchContextService>,
-    catalog: package::LocalStyleCatalog,
+    catalog: Mutex<package::LocalStyleCatalog>,
     resolver: Arc<dyn StyleResolver>,
     active: ActiveSlot,
 }
@@ -353,7 +353,7 @@ impl TrainedStyleService {
             repository,
             analysis,
             batch_context,
-            catalog,
+            catalog: Mutex::new(catalog),
             resolver,
             active: Arc::new(Mutex::new(None)),
         }
@@ -361,10 +361,44 @@ impl TrainedStyleService {
 
     pub fn styles(&self, photo_type: PhotoType) -> Vec<StyleSummary> {
         self.catalog
-            .packages()
-            .filter(|package| package.manifest.photo_type == photo_type)
-            .map(summary)
-            .collect()
+            .lock()
+            .ok()
+            .map(|catalog| {
+                catalog
+                    .packages()
+                    .filter(|package| package.manifest.photo_type == photo_type)
+                    .map(summary)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn load_additional_style_root(&self, root: &Path) -> ProcessingResult<()> {
+        self.catalog
+            .lock()
+            .map_err(internal)?
+            .load_additional_root(root)
+            .map_err(processing)
+    }
+
+    pub fn install_style_package(&self, directory: &Path) -> ProcessingResult<StyleSummary> {
+        let package = package::load_style_package(directory).map_err(processing)?;
+        let result = summary(&package);
+        self.catalog
+            .lock()
+            .map_err(internal)?
+            .insert_package(package)
+            .map_err(processing)?;
+        Ok(result)
+    }
+
+    fn package(&self, style_id: &str) -> ProcessingResult<Option<LoadedStylePackage>> {
+        Ok(self
+            .catalog
+            .lock()
+            .map_err(internal)?
+            .get(style_id)
+            .cloned())
     }
 
     pub fn reserve(&self, request: StyleApplyRequest) -> ProcessingResult<StyleApplyPermit> {
@@ -372,8 +406,7 @@ impl TrainedStyleService {
             return Err(internal("Invalid trained-style request ID"));
         }
         let package = self
-            .catalog
-            .get(&request.style_id)
+            .package(&request.style_id)?
             .ok_or_else(|| internal("The selected AI style package is unavailable"))?;
         if package.manifest.photo_type != request.photo_type {
             return Err(internal(
@@ -532,8 +565,7 @@ impl TrainedStyleService {
         let started = Instant::now();
         let request = &permit.request;
         let package = self
-            .catalog
-            .get(&request.style_id)
+            .package(&request.style_id)?
             .ok_or_else(|| internal("The selected AI style package is unavailable"))?;
         let mut progress = StyleApplyProgress {
             job_id: request.job_id.clone(),
@@ -599,7 +631,7 @@ impl TrainedStyleService {
                         .map_err(processing)?;
                 let prediction = self
                     .resolver
-                    .resolve(package, &features)
+                    .resolve(&package, &features)
                     .map_err(processing)?;
                 let current = self.repository.get_recipe(&request.job_id, asset_id)?;
                 if let Some(error) = current.error.clone() {
@@ -607,7 +639,7 @@ impl TrainedStyleService {
                 }
                 let recipe = resolve_prediction_to_recipe(
                     &current.recipe,
-                    package,
+                    &package,
                     &analysis,
                     &context,
                     asset_context,
@@ -637,7 +669,7 @@ impl TrainedStyleService {
                     input_identity: Some(input_identity(
                         &analysis,
                         &context,
-                        package,
+                        &package,
                         self.resolver.backend_id(),
                     )),
                     analysis_id: Some(analysis.analysis_id.clone()),
@@ -690,7 +722,7 @@ impl TrainedStyleService {
         progress.duration_ms = started.elapsed().as_millis() as u64;
         self.repository.save_style_progress(&progress)?;
         Ok(StyleApplyResult {
-            style: summary(package),
+            style: summary(&package),
             selected_asset_ids: request.selected_asset_ids.clone(),
             predictions_attempted: progress.completed,
             predictions_succeeded: progress.succeeded,
@@ -716,12 +748,12 @@ impl TrainedStyleService {
                 continue;
             }
             let current = self.repository.get_recipe(job, &inference.asset_id)?;
-            let package = self.catalog.get(&inference.style_id);
+            let package = self.package(&inference.style_id)?;
             let analysis = self
                 .analysis
                 .get_analysis(job, &inference.asset_id, photo_type)?
                 .analysis;
-            let current_identity = match (&context, package, analysis) {
+            let current_identity = match (&context, package.as_ref(), analysis) {
                 (Some(context), Some(package), Some(analysis)) => Some(input_identity(
                     &analysis,
                     context,
@@ -748,8 +780,8 @@ impl TrainedStyleService {
             .filter(|first| {
                 applied.len() == selected.len() && applied.iter().all(|style| style == *first)
             })
-            .and_then(|id| self.catalog.get(id))
-            .map(summary);
+            .and_then(|id| self.package(id).ok().flatten())
+            .map(|package| summary(&package));
         Ok(StyleEditingState {
             styles: self.styles(photo_type),
             selected_asset_ids: selected,

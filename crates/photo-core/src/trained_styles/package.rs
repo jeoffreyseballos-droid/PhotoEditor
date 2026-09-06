@@ -192,4 +192,33 @@ impl LocalStyleCatalog {
     pub fn packages(&self) -> impl Iterator<Item = &LoadedStylePackage> {
         self.styles.values()
     }
+
+    pub fn insert_package(&mut self, package: LoadedStylePackage) -> Result<(), StyleError> {
+        validate_loaded_package(&package)?;
+        let id = package.manifest.style_id.clone();
+        if self.styles.contains_key(&id) {
+            return Err(StyleError::CorruptPackage(format!(
+                "Duplicate style ID: {id}"
+            )));
+        }
+        self.styles.insert(id, package);
+        Ok(())
+    }
+
+    pub fn load_additional_root(&mut self, root: &Path) -> Result<(), StyleError> {
+        if !root.exists() {
+            return Ok(());
+        }
+        let mut directories = fs::read_dir(root)
+            .map_err(|error| StyleError::CorruptPackage(format!("{}: {error}", root.display())))?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+            .map(|entry| entry.path())
+            .collect::<Vec<_>>();
+        directories.sort();
+        for directory in directories {
+            self.insert_package(load_style_package(&directory)?)?;
+        }
+        Ok(())
+    }
 }

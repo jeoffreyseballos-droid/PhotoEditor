@@ -29,6 +29,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/008_duplicate_content.sql"),
     include_str!("../migrations/009_batch_context.sql"),
     include_str!("../migrations/010_trained_styles.sql"),
+    include_str!("../migrations/011_training_studio.sql"),
 ];
 
 #[derive(Clone)]
@@ -74,6 +75,7 @@ impl JobRepository {
     }
 
     pub fn recover_interrupted(&self) -> AppResult<()> {
+        self.connect()?.execute("UPDATE training_runs SET status='interrupted', payload=json_set(payload,'$.status','interrupted','$.stage','stopped','$.error','Training was interrupted; cached pair work remains available.') WHERE status IN ('queued','running')", [])?;
         self.connect()?.execute("UPDATE trained_style_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; completed recipes remain available.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
         self.connect()?.execute("UPDATE batch_context_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; cached context remains available.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
         self.connect()?.execute("UPDATE culling_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; completed ratings preserved. Resume culling.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
@@ -105,9 +107,13 @@ impl JobRepository {
     pub fn list_jobs(&self, offset: u32, limit: u32) -> AppResult<Page<Job>> {
         let limit = limit.clamp(1, 100);
         let connection = self.connect()?;
-        let total = connection.query_row("SELECT COUNT(*) FROM jobs", [], |row| row.get(0))?;
+        let total = connection.query_row(
+            "SELECT COUNT(*) FROM jobs WHERE name NOT LIKE '__training__%'",
+            [],
+            |row| row.get(0),
+        )?;
         let mut statement = connection.prepare(&format!(
-            "{JOB_SELECT} ORDER BY j.updated_at DESC, j.id LIMIT ?1 OFFSET ?2"
+            "{JOB_SELECT} WHERE j.name NOT LIKE '__training__%' ORDER BY j.updated_at DESC, j.id LIMIT ?1 OFFSET ?2"
         ))?;
         let items = statement
             .query_map(params![limit, offset], job_row)?

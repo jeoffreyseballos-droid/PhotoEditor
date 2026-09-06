@@ -334,12 +334,16 @@ fn migration_is_repeatable_and_rejects_newer_database_versions() {
     let version: u32 = db
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .unwrap();
-    assert_eq!(version, 10);
+    assert_eq!(version, 11);
     for table in [
         "batch_contexts",
         "batch_context_runs",
         "trained_style_results",
         "trained_style_runs",
+        "training_datasets",
+        "training_target_cache",
+        "training_runs",
+        "training_feedback",
     ] {
         let exists: u32 = db
             .query_row(

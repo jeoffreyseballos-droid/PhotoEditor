@@ -81,6 +81,10 @@ All development stayed inside PhotoEditor. No PhotographerApp changes, Git commi
 
 No new segmentation model or photographic control was introduced. No .gitignore changes were needed: generated files remain in ignored .tools, .resources, target, dist and node_modules directories. Full recipe storage/hashing/history/import behavior is documented in [EDIT_RECIPE.md](EDIT_RECIPE.md). Verification results and manual gaps are in [VERIFICATION.md](VERIFICATION.md).
 
+## Phase 8 Training Studio implementation
+
+Phase 8 adds `photo-contracts::training` and `photo-core::training` as a local supervised recipe-learning boundary. Migration 011 persists datasets, target-cache entries, run progress/recovery, and correction-feedback capacity. The service reuses PhotoAnalysis, Phase 6 grouping, Phase 7 features/package loader/resolver, and the deterministic renderer. It adds conservative pairing, same-photo/geometry diagnostics, a staged photographic target optimizer, confidence-weighted regularized linear training, deterministic scene-aware holdout, recipe/rendered metrics, neutral and mean baselines, atomic versioned package export, cancellation, previews, and validation feedback. The desktop Training Studio exposes that workflow separately from normal Editing and installs successful packages into AI Styles immediately. Full semantics are in [TRAINING_STUDIO.md](TRAINING_STUDIO.md).
+
 ## Historical Phase 2.1 implementation inventory
 
 The following inventory records the earlier Phase 2.1 delivery. Its then-deferred recipe work is implemented above; AI, cloud/auth/API and signing remain deferred.

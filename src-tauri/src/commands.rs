@@ -15,7 +15,262 @@ pub struct DesktopState(
     pub Arc<photo_core::culling::CullingService>,
     pub Arc<photo_core::batch_context::BatchContextService>,
     pub Arc<photo_core::trained_styles::TrainedStyleService>,
+    pub Arc<photo_core::training::TrainingService>,
 );
+
+#[tauri::command]
+pub async fn training_datasets(
+    state: State<'_, DesktopState>,
+    job_id: Option<String>,
+) -> photo_contracts::ProcessingResult<Vec<photo_contracts::training::TrainingDataset>> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || match job_id {
+        Some(job_id) => service.datasets(&job_id),
+        None => service.all_datasets(),
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn create_training_dataset(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::CreateTrainingDatasetRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.create_dataset(request))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn training_dataset(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.dataset(&dataset_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn add_training_pair(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::AddTrainingPairRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.add_pair(request))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn add_training_before_files(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::AddTrainingFilesRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.add_before_files(request))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn add_training_after_files(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::AddTrainingFilesRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.add_after_files(request))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn add_training_before_folder(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::AddTrainingFolderRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.add_before_folder(request))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn add_training_after_folder(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::AddTrainingFolderRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.add_after_folder(request))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn add_training_path_pair(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::AddTrainingPathPairRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.add_path_pair(request))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn match_training_dataset(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+) -> photo_contracts::ProcessingResult<photo_core::training::AutoMatchApplyResult> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.match_dataset(&dataset_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn auto_match_training_folder(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+    folder: PathBuf,
+) -> photo_contracts::ProcessingResult<photo_core::training::AutoMatchApplyResult> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.auto_match_folder(&dataset_id, &folder))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn match_validate_training_dataset(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.match_and_validate(&dataset_id, &request_id)
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub fn training_matching_progress(
+    state: State<'_, DesktopState>,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<Option<photo_core::training::matching_task::MatchingProgress>>
+{
+    state.6.matching_progress(&request_id)
+}
+
+#[tauri::command]
+pub fn cancel_training_matching(
+    state: State<'_, DesktopState>,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<()> {
+    state.6.cancel_matching(&request_id)
+}
+
+#[tauri::command]
+pub async fn set_training_pair_excluded(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+    pair_id: String,
+    excluded: bool,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.set_pair_excluded(&dataset_id, &pair_id, excluded)
+    })
+    .await
+    .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn validate_training_dataset(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.validate_dataset(&dataset_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn run_training(
+    state: State<'_, DesktopState>,
+    request: photo_core::training::TrainingRequest,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingRun> {
+    let service = state.6.clone();
+    let styles = state.5.clone();
+    let permit = service.reserve(request)?;
+    let run = tauri::async_runtime::spawn_blocking(move || service.train(permit))
+        .await
+        .map_err(photo_core::rendering::internal)??;
+    if let Some(path) = run.artifact_path.as_ref() {
+        styles.install_style_package(path)?;
+    }
+    Ok(run)
+}
+
+#[tauri::command]
+pub async fn training_progress(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+) -> photo_contracts::ProcessingResult<Option<photo_contracts::training::TrainingRun>> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.progress(&dataset_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub fn cancel_training(
+    state: State<'_, DesktopState>,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<()> {
+    state.6.cancel(&request_id)
+}
+
+#[tauri::command]
+pub async fn training_pair_previews(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+    pair_id: String,
+) -> photo_contracts::ProcessingResult<photo_core::training::TrainingPreviewSet> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.previews(&dataset_id, &pair_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn training_feedback(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+    pair_id: String,
+    feedback: photo_contracts::training::ValidationFeedback,
+) -> photo_contracts::ProcessingResult<photo_contracts::training::TrainingDataset> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.feedback(&dataset_id, &pair_id, feedback))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn prepare_training_validation(
+    state: State<'_, DesktopState>,
+    dataset_id: String,
+) -> photo_contracts::ProcessingResult<photo_core::training::ValidationEditingSelection> {
+    let service = state.6.clone();
+    tauri::async_runtime::spawn_blocking(move || service.prepare_validation_editing(&dataset_id))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
 
 #[tauri::command]
 pub fn trained_styles(

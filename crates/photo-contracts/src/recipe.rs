@@ -143,6 +143,12 @@ pub struct RecipeProvenance {
     pub model_id: Option<String>,
     pub model_version: Option<String>,
     pub analysis_id: Option<String>,
+    pub style_version: Option<String>,
+    pub style_package_id: Option<String>,
+    pub feature_schema_version: Option<String>,
+    pub batch_context_id: Option<String>,
+    pub batch_context_version: Option<String>,
+    pub photo_analysis_version: Option<String>,
     pub manually_modified: bool,
     /// Reserved evidence, never inferred by the application.
     pub acceptance: Option<RecipeAcceptance>,

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "algorithm": "sha256",
+  "files": {
+    "metadata.json": "bfb7d34896fe8ac0d5d50985bf3ba99cbf556e20722f286ef9f52bb9ef3e006c",
+    "model.json": "8f9f477fdf85ed588b965aa4555a38051fd227871c8797bc01cc93c311af0823",
+    "rules.json": "cf50b48ad0dd48a3a8b56dad96c567edd8dc183e2c71746716b235e871786855",
+    "style.json": "0362f1cb6703a226316da070d95c809671fd79361e486a70dce414733164e2fe"
+  },
+  "package_identity": "e21f7a3ed611bfc1bbd9322ad7d4906207fc5fa00ee90726548120c59633483a",
+  "signature": {
+    "scheme": "unsigned_sha256_v1",
+    "signer": null,
+    "value": null
+  }
+}

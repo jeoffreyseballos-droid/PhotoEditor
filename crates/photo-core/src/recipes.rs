@@ -35,6 +35,7 @@ pub enum RevisionReason {
     Imported,
     Snapshot,
     BuiltInPreset,
+    TrainedStyle,
 }
 impl RevisionReason {
     fn name(self) -> &'static str {
@@ -49,6 +50,7 @@ impl RevisionReason {
             Self::Imported => "imported",
             Self::Snapshot => "snapshot",
             Self::BuiltInPreset => "built_in_preset",
+            Self::TrainedStyle => "trained_style",
         }
     }
 }

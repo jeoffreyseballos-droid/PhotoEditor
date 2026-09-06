@@ -18,4 +18,5 @@ pub mod repository;
 pub mod resources;
 pub mod thumbnails;
 pub mod tiff_preview;
+pub mod trained_styles;
 pub mod warnings;

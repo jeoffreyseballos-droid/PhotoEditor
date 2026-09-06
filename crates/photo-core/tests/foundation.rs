@@ -334,8 +334,13 @@ fn migration_is_repeatable_and_rejects_newer_database_versions() {
     let version: u32 = db
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .unwrap();
-    assert_eq!(version, 9);
-    for table in ["batch_contexts", "batch_context_runs"] {
+    assert_eq!(version, 10);
+    for table in [
+        "batch_contexts",
+        "batch_context_runs",
+        "trained_style_results",
+        "trained_style_runs",
+    ] {
         let exists: u32 = db
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
@@ -343,7 +348,7 @@ fn migration_is_repeatable_and_rejects_newer_database_versions() {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(exists, 1, "missing migration-9 table {table}");
+        assert_eq!(exists, 1, "missing batch/style migration table {table}");
     }
     db.pragma_update(None, "user_version", 999).unwrap();
     assert!(JobRepository::open(path).is_err());

@@ -3,8 +3,14 @@ import { api, errorMessage } from "../api";
 import type { PhotoType } from "../analysis";
 import { BatchContextInspector } from "../components/BatchContextInspector";
 import { DevelopmentPanel } from "../components/DevelopmentPanel";
+import { StyleInferenceInspector } from "../components/StyleInferenceInspector";
 import { Thumbnail } from "../components/Thumbnail";
 import type { BuiltInPreset, BuiltInPresetId } from "../presets";
+import type {
+  StyleApplyProgress,
+  StyleAssetInference,
+  StyleSummary,
+} from "../trained-styles";
 import type { Asset } from "../types";
 
 const POP_SUBJECT_LAYER_ID = "built-in-pop-subject-v1";
@@ -47,7 +53,16 @@ export function PresetEditingScreen({
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedIds, setSelectedIds] = useState(initialSelectedAssetIds);
   const [choice, setChoice] = useState<BuiltInPresetId | null>(null);
+  const [styleChoice, setStyleChoice] = useState<string | null>(null);
+  const [trainedStyles, setTrainedStyles] = useState<StyleSummary[]>([]);
   const [applied, setApplied] = useState<BuiltInPresetId | null>(null);
+  const [appliedStyle, setAppliedStyle] = useState<StyleSummary | null>(null);
+  const [styleInferences, setStyleInferences] = useState<StyleAssetInference[]>(
+    [],
+  );
+  const [styleProgress, setStyleProgress] = useState<StyleApplyProgress | null>(
+    null,
+  );
   const [appliedCount, setAppliedCount] = useState(0);
   const [updatedCount, setUpdatedCount] = useState(0);
   const [unchangedCount, setUnchangedCount] = useState(0);
@@ -74,14 +89,16 @@ export function PresetEditingScreen({
   );
   const batchVersion = useRef(0);
   const activeRequest = useRef<string | null>(null);
+  const activeStyleRequest = useRef<string | null>(null);
 
   const processEditedPreviews = useCallback(
     async (
-      presetId: BuiltInPresetId,
+      prepareSubjectMasks: boolean,
       assetIds: string[],
+      initialAttention: string[] = [],
     ): Promise<BatchOutcome> => {
       const version = ++batchVersion.current;
-      const failed = new Set<string>();
+      const failed = new Set<string>(initialAttention);
       const maskFailures = new Set<string>();
       let rendered = 0;
       const current = () => batchVersion.current === version;
@@ -92,10 +109,10 @@ export function PresetEditingScreen({
       };
 
       setEditedPreviews({});
-      setAttention([]);
+      setAttention(initialAttention);
       setRenderedCount(0);
 
-      if (presetId === "pop") {
+      if (prepareSubjectMasks) {
         setBatchProgress({
           stage: "masks",
           completed: 0,
@@ -238,12 +255,14 @@ export function PresetEditingScreen({
     void Promise.all([
       api.builtinPresets(),
       api.presetEditingState(jobId),
+      api.trainedStyleState(jobId, photoType),
       api.cullingOverview(jobId, photoType),
     ])
-      .then(([definitions, state, overview]) => {
+      .then(([definitions, state, trainedState, overview]) => {
         if (cancelled) return;
         const persisted = new Set(state.selected_asset_ids);
         setPresets(definitions);
+        setTrainedStyles(trainedState.styles);
         setSelectedIds(state.selected_asset_ids);
         setAssets(
           overview.items
@@ -252,7 +271,14 @@ export function PresetEditingScreen({
         );
         setChoice(state.applied_preset);
         setApplied(state.applied_preset);
-        setAppliedCount(state.applied_count);
+        setAppliedStyle(trainedState.applied_style);
+        setStyleInferences(trainedState.inferences);
+        setAttention(trainedState.needs_review);
+        setAppliedCount(
+          trainedState.applied_style
+            ? trainedState.applied_count
+            : state.applied_count,
+        );
         setUnresolved(state.unresolved_subject_masks);
         setEditingReady(true);
         if (!state.selected_asset_ids.length) {
@@ -260,11 +286,21 @@ export function PresetEditingScreen({
         } else if (state.applied_preset) {
           setSaving(true);
           void processEditedPreviews(
-            state.applied_preset,
+            state.applied_preset === "pop",
             state.selected_asset_ids,
           ).then((outcome) => {
             if (cancelled || outcome.cancelled) return;
             setUnresolved(outcome.maskFailures);
+            setSaving(false);
+          });
+        } else if (trainedState.applied_style) {
+          setSaving(true);
+          void processEditedPreviews(
+            false,
+            trainedState.selected_asset_ids,
+            trainedState.needs_review,
+          ).then((outcome) => {
+            if (cancelled || outcome.cancelled) return;
             setSaving(false);
           });
         }
@@ -280,6 +316,9 @@ export function PresetEditingScreen({
       batchVersion.current += 1;
       const requestId = activeRequest.current;
       if (requestId) void api.cancelDevelopment(requestId).catch(() => {});
+      const styleRequestId = activeStyleRequest.current;
+      if (styleRequestId)
+        void api.cancelTrainedStyle(styleRequestId).catch(() => {});
     };
   }, [jobId, photoType, processEditedPreviews]);
 
@@ -287,6 +326,13 @@ export function PresetEditingScreen({
     () => presets.find((preset) => preset.id === applied) ?? null,
     [applied, presets],
   );
+
+  const selectedStyle = useMemo(
+    () => trainedStyles.find((style) => style.style_id === styleChoice) ?? null,
+    [styleChoice, trainedStyles],
+  );
+
+  const activeName = activePreset?.name ?? appliedStyle?.name ?? null;
 
   async function apply() {
     if (!choice || !selectedIds.length || saving) return;
@@ -297,13 +343,15 @@ export function PresetEditingScreen({
       const result = await api.applyBuiltInPreset(jobId, choice, selectedIds);
       setSelectedIds(result.selected_asset_ids);
       setApplied(result.preset.id);
+      setAppliedStyle(null);
+      setStyleInferences([]);
       setAppliedCount(result.selected_asset_ids.length);
       setUpdatedCount(result.recipes_updated);
       setUnchangedCount(result.recipes_unchanged);
       setUnresolved(result.unresolved_subject_masks);
       setInspected(null);
       const outcome = await processEditedPreviews(
-        result.preset.id,
+        result.preset.id === "pop",
         result.selected_asset_ids,
       );
       if (!outcome.cancelled) setUnresolved(outcome.maskFailures);
@@ -311,6 +359,74 @@ export function PresetEditingScreen({
       setError(errorMessage(cause));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function applyAIStyle() {
+    if (!selectedStyle || !selectedIds.length || saving) return;
+    const requestId = crypto.randomUUID();
+    activeStyleRequest.current = requestId;
+    setSaving(true);
+    setError(null);
+    setExportSummary(null);
+    setStyleProgress({
+      job_id: jobId,
+      request_id: requestId,
+      photo_type: photoType,
+      style_id: selectedStyle.style_id,
+      status: "queued",
+      stage: `Applying ${selectedStyle.name}`,
+      completed: 0,
+      total: selectedIds.length,
+      succeeded: 0,
+      failed: 0,
+      duration_ms: 0,
+      error: null,
+    });
+    const poll = window.setInterval(() => {
+      void api
+        .trainedStyleProgress(jobId, photoType)
+        .then((progress) => {
+          if (activeStyleRequest.current === requestId && progress)
+            setStyleProgress(progress);
+        })
+        .catch(() => {});
+    }, 120);
+    try {
+      const result = await api.applyTrainedStyle({
+        job_id: jobId,
+        photo_type: photoType,
+        style_id: selectedStyle.style_id,
+        selected_asset_ids: selectedIds,
+        request_id: requestId,
+      });
+      if (activeStyleRequest.current !== requestId) return;
+      setSelectedIds(result.selected_asset_ids);
+      setApplied(null);
+      setAppliedStyle(result.style);
+      setAppliedCount(result.predictions_succeeded);
+      setUpdatedCount(result.recipes_updated);
+      setUnchangedCount(result.recipes_unchanged);
+      setStyleInferences(result.inferences);
+      setAttention(result.needs_review);
+      setInspected(null);
+      setStyleProgress(null);
+      const outcome = await processEditedPreviews(
+        false,
+        result.selected_asset_ids,
+        result.needs_review,
+      );
+      if (!outcome.cancelled) setAttention(outcome.attention);
+    } catch (cause) {
+      if (activeStyleRequest.current === requestId)
+        setError(errorMessage(cause));
+    } finally {
+      window.clearInterval(poll);
+      if (activeStyleRequest.current === requestId) {
+        activeStyleRequest.current = null;
+        setStyleProgress(null);
+        setSaving(false);
+      }
     }
   }
 
@@ -397,6 +513,17 @@ export function PresetEditingScreen({
     setError("Preview preparation stopped. Completed previews are preserved.");
   }
 
+  function cancelStyleInference() {
+    const requestId = activeStyleRequest.current;
+    if (requestId) void api.cancelTrainedStyle(requestId).catch(() => {});
+    activeStyleRequest.current = null;
+    setStyleProgress(null);
+    setSaving(false);
+    setError(
+      "AI style stopped. Completed recipes are preserved; remaining photographs were not changed.",
+    );
+  }
+
   function cancelExport() {
     batchVersion.current += 1;
     const requestId = activeRequest.current;
@@ -411,10 +538,10 @@ export function PresetEditingScreen({
 
   return (
     <section className="screen preset-editing-screen">
-      <div className="eyebrow">EDITING / BUILT-IN PRESETS</div>
+      <div className="eyebrow">EDITING</div>
       <header className="job-header">
         <div>
-          <h1>{activePreset ? `Editing — ${activePreset.name}` : "Editing"}</h1>
+          <h1>{activeName ? `Editing — ${activeName}` : "Editing"}</h1>
           <p className="subtitle">
             {selectedIds.length.toLocaleString()} photos selected
           </p>
@@ -463,12 +590,59 @@ export function PresetEditingScreen({
           {exportSummary.failed.toLocaleString()} failed
         </p>
       )}
+      {styleProgress && (
+        <div className="notice preset-progress" role="status">
+          <span>
+            {styleProgress.stage}... {styleProgress.completed.toLocaleString()}{" "}
+            / {styleProgress.total.toLocaleString()}
+          </span>
+          <button onClick={cancelStyleInference}>Cancel Style</button>
+        </div>
+      )}
       {loading ? (
         <div className="empty-state" role="status">
           Loading the saved editing selection…
         </div>
-      ) : !activePreset ? (
+      ) : !activePreset && !appliedStyle ? (
         <div className="preset-chooser">
+          <div className="section-heading">
+            <h2>AI Styles</h2>
+            <span className="muted">Adaptive local control predictions</span>
+          </div>
+          <div className="preset-grid" role="group" aria-label="AI styles">
+            {trainedStyles.map((style) => (
+              <button
+                key={style.style_id}
+                className={`preset-card ai-style-card ${styleChoice === style.style_id ? "selected" : ""}`}
+                aria-pressed={styleChoice === style.style_id}
+                disabled={exporting || saving}
+                onClick={() => {
+                  setStyleChoice(style.style_id);
+                  setChoice(null);
+                }}
+              >
+                <strong>{style.name}</strong>
+                <span>{style.description}</span>
+                {style.development_only && <small>Development model</small>}
+              </button>
+            ))}
+          </div>
+          {selectedStyle && (
+            <div className="preset-actions ai-style-actions">
+              <span className="muted">
+                Produces an individual recipe for each selected photograph.
+              </span>
+              <button
+                className="primary"
+                disabled={
+                  !editingReady || !selectedIds.length || saving || exporting
+                }
+                onClick={() => void applyAIStyle()}
+              >
+                {saving ? "Applying…" : "Apply AI Style"}
+              </button>
+            </div>
+          )}
           <div className="section-heading">
             <h2>Choose a preset</h2>
             <span className="muted">Deterministic local recipes</span>
@@ -484,7 +658,10 @@ export function PresetEditingScreen({
                 className={`preset-card ${choice === preset.id ? "selected" : ""}`}
                 aria-pressed={choice === preset.id}
                 disabled={exporting}
-                onClick={() => setChoice(preset.id)}
+                onClick={() => {
+                  setChoice(preset.id);
+                  setStyleChoice(null);
+                }}
               >
                 <strong>{preset.name}</strong>
                 <span>{preset.description}</span>
@@ -512,7 +689,9 @@ export function PresetEditingScreen({
         <>
           <div className="preset-summary" role="status">
             <strong>{appliedCount.toLocaleString()} photos</strong>
-            <span>Preset: {activePreset.name}</span>
+            <span>
+              {activePreset ? "Preset" : "AI Style"}: {activeName}
+            </span>
             <span>
               {updatedCount
                 ? `${updatedCount.toLocaleString()} recipes created or updated`
@@ -522,6 +701,9 @@ export function PresetEditingScreen({
               disabled={saving || exporting}
               onClick={() => {
                 setApplied(null);
+                setAppliedStyle(null);
+                setStyleChoice(null);
+                setStyleInferences([]);
                 setInspected(null);
                 setEditedPreviews({});
                 setAttention([]);
@@ -529,7 +711,7 @@ export function PresetEditingScreen({
                 setExportSummary(null);
               }}
             >
-              Change Preset
+              {activePreset ? "Change Preset" : "Change Style"}
             </button>
           </div>
           {batchProgress && (
@@ -550,7 +732,7 @@ export function PresetEditingScreen({
               {selectedIds.length.toLocaleString()}
             </p>
           )}
-          {activePreset.id === "pop" && !saving && unresolved.length > 0 && (
+          {activePreset?.id === "pop" && !saving && unresolved.length > 0 && (
             <p className="notice" role="status">
               Subject mask could not be prepared for{" "}
               {unresolved.length.toLocaleString()} photos. Those images remain
@@ -559,10 +741,23 @@ export function PresetEditingScreen({
             </p>
           )}
           {inspected && (
-            <DevelopmentPanel
-              key={`${inspected.job_id}-${inspected.id}`}
-              asset={inspected}
-            />
+            <>
+              {appliedStyle && (
+                <StyleInferenceInspector
+                  style={appliedStyle}
+                  asset={inspected}
+                  inference={
+                    styleInferences.find(
+                      (inference) => inference.asset_id === inspected.id,
+                    ) ?? null
+                  }
+                />
+              )}
+              <DevelopmentPanel
+                key={`${inspected.job_id}-${inspected.id}`}
+                asset={inspected}
+              />
+            </>
           )}
           <div className="section-heading">
             <h2>Selected photographs</h2>
@@ -581,7 +776,7 @@ export function PresetEditingScreen({
                     selected={inspected?.id === asset.id}
                     onSelect={() => setInspected(asset)}
                     sourceOverride={editedPreviews[asset.id] ?? null}
-                    sourceDescription={`${activePreset.name} edited preview for ${asset.filename}`}
+                    sourceDescription={`${activeName} edited preview for ${asset.filename}`}
                   />
                   {needsAttention && <small>Needs attention</small>}
                 </article>

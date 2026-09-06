@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "package_schema_version": 1,
+  "style_id": "adaptive-natural-development",
+  "name": "Adaptive Natural — Development",
+  "version": "1.0.0",
+  "photo_type": "portrait",
+  "model_version": "adaptive-natural-linear-2026-09-v1",
+  "feature_schema": "style_features_v1",
+  "renderer_compatibility": {
+    "recipe_schema_versions": [1],
+    "minimum_renderer_version": "photo-cpu-linear-srgb-v2.1"
+  },
+  "supported_controls": [
+    "exposure_ev",
+    "temperature_delta",
+    "tint",
+    "contrast",
+    "highlights",
+    "shadows",
+    "whites",
+    "blacks",
+    "saturation",
+    "vibrance",
+    "texture",
+    "clarity",
+    "dehaze",
+    "sharpening_amount",
+    "noise_reduction",
+    "vignette_amount"
+  ],
+  "model": { "path": "model.json", "format": "linear_json_v1" },
+  "rules": { "path": "rules.json", "format": "style_rules_v1" },
+  "metadata": { "path": "metadata.json", "format": "style_metadata_v1" },
+  "integrity": {
+    "path": "checksums.json",
+    "format": "sha256_canonical_json_v1"
+  }
+}

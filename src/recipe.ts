@@ -74,6 +74,12 @@ export interface EditRecipe {
     model_id: string | null;
     model_version: string | null;
     analysis_id: string | null;
+    style_version: string | null;
+    style_package_id: string | null;
+    feature_schema_version: string | null;
+    batch_context_id: string | null;
+    batch_context_version: string | null;
+    photo_analysis_version: string | null;
     manually_modified: boolean;
     acceptance: "accepted" | "rejected" | null;
   };
@@ -87,7 +93,7 @@ export interface RecipeState {
   error: { code: string; message: string } | null;
 }
 export type RevisionReason =
-  "snapshot" | "reset" | "manual_edit" | "built_in_preset";
+  "snapshot" | "reset" | "manual_edit" | "built_in_preset" | "trained_style";
 export interface RecipeRevision {
   revision_id: string;
   revision_number: number;

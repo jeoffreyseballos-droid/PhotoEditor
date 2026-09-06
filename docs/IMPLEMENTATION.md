@@ -1,3 +1,16 @@
+# Phase 7 implementation inventory — trained styles / adaptive AI editing
+
+All Phase 7 development remains inside PhotoEditor. It consumes the existing Phase 4 PhotoAnalysis, Phase 6 BatchContext, Phase 3 EditRecipe and deterministic renderer; it does not modify PhotographerApp, source pixels or built-in preset behavior.
+
+- `crates/photo-contracts/src/trained_style.rs`, `tests/trained_style.rs`: strict versioned TrainedStyle package, `style_features_v1`, packaged linear model, safe bounds, missingness, prediction diagnostics, integrity and replaceable `StyleResolver` boundary.
+- `crates/photo-core/src/trained_styles/{features,package,resolver,storage,mod}.rs`, migration `010_trained_styles.sql`, core `lib.rs`/`repository.rs`: canonical package loading/checksums, typed feature building from PhotoAnalysis + AssetBatchContext, adaptive linear inference, per-asset recipe conversion/provenance, idempotent replacement, SQLite progress/inference persistence, stale detection, cancellation and per-asset failure continuation.
+- `styles/adaptive-natural-development/`, `scripts/prepare-styles.mjs`, `package.json`, `src-tauri/tauri.conf.json`: clearly labeled development-only Adaptive Natural package with style/model/rules/metadata/checksum files, copied into native resources without network or licensing claims.
+- `src/trained-styles.ts`, `src/api.ts`, `src/components/StyleInferenceInspector.tsx`, `src/screens/PresetEditingScreen.tsx`, `src/styles.css`, Tauri `commands.rs`/`lib.rs`: AI style listing/state/apply/progress/cancel IPC, separate AI-style chooser, exact persisted-selection guard, simple progress/cancel UI, recipe-rendered previews and collapsed inference details. Built-in POP/WARM/BLACK & WHITE remain available and Export All follows the existing recipe path.
+- `crates/photo-core/tests/trained_styles.rs`, `src/test/presets.test.tsx`: adaptive dark/bright and warm/cool behavior, BatchContext directionality, three-frame consistency, bounds/provenance/idempotence, exact selected-only processing, preview updates and cancellation coverage.
+- `docs/TRAINED_STYLES.md`, this inventory, `ARCHITECTURE.md`, `VERIFICATION.md`, `LIMITATIONS.md`: runtime contract, package format, evidence, performance and Phase 8 boundary.
+
+The v1 resolver is a deterministic packaged linear model, not a hardcoded preset and not a training pipeline. The development package is explicitly not trained from the photographer's photographs.
+
 # Phase 6 implementation inventory — batch context
 
 All Phase 6 development remains inside PhotoEditor. It adds source-batch context without changing PhotoAnalysis, culling ratings, EditRecipe, renderer behavior, built-in presets, PhotographerApp, or network behavior.
@@ -44,7 +57,7 @@ All Phase 4 work is inside PhotoEditor. No PhotographerApp changes or automatic 
 - `src-tauri/src/{commands,lib}.rs`: isolated service/cache configuration and five background/control commands.
 - `docs/{PHOTO_ANALYSIS,ARCHITECTURE,IMPLEMENTATION,VERIFICATION,LIMITATIONS}.md`: Phase 4 contract, measurements, architecture, evidence and known gaps.
 
-No recipe generation, trained styles, face identity, face detector, sky model, scene clustering or complete consumer wizard. Existing recipe/development test assertions remain intact.
+No face identity, sky model, semantic scene clustering or complete consumer wizard. Phase 7's local adaptive style resolver is documented above; existing recipe/development assertions remain intact.
 
 ## Historical Phase 3 implementation inventory
 

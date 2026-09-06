@@ -8,7 +8,7 @@ Recipe = what to do to this individual image.
 
 Renderer = executes the recipe.
 
-Analysis and trained styles remain separate, unimplemented provider boundaries. A future generator may combine image analysis and a trained style to emit different corrections for every asset. One trained style does **not** mean a fixed adjustment vector applied to a folder. No AI decisions, training, cloud or PhotographerApp integration are implemented here.
+Analysis and trained styles remain separate provider boundaries. Phase 7 combines typed PhotoAnalysis and BatchContext with a validated TrainedStyle package to emit different creative corrections for every selected asset. One trained style does **not** mean a fixed adjustment vector applied to a folder. Training, cloud and PhotographerApp integration are not part of this runtime.
 
 ## Authority and entry points
 
@@ -41,7 +41,7 @@ Typed groups:
 - global.geometry: rotation_degrees and normalized crop.
 - local_layers: ordered, individually identified logical-mask edits.
 - metadata: optional scene_cluster_id, sequence_id, reference_asset_id, consistency_group_id, consistency_note, confidence, needs_review.
-- provenance: origin, created_by, source_recipe_id, style_id, model_id, model_version, analysis_id, manually_modified, nullable acceptance.
+- provenance: origin, created_by, source_recipe_id, style_id, model_id, model_version, analysis_id, optional style_version/style_package_id/feature_schema_version/batch_context_id/batch_context_version/photo_analysis_version, manually_modified, nullable acceptance.
 
 No RAW, image analysis measurements, model weights, mask pixels, selected-slider state, overlays or machine cache paths are embedded. Recipe JSON is capped at 256 KiB; individual strings at 1024 bytes; at most eight local layers.
 
@@ -150,7 +150,7 @@ Reset/import/restore first retain any unsnapshotted state they replace, then cap
 
 Retention is bounded at **200 snapshots per asset: the original revision plus the latest 199**. Intermediate older snapshots are pruned transactionally when this limit is exceeded; there is no full permanent training-event log. Current drafts, initial evidence, recent revision identities/times/provenance and recovery archives remain. Export valuable recipes before long sessions if permanent retention is required. No training or upload uses this history.
 
-Origins manual/imported/migrated/system are used today. Reserved trained_style/ai_generated/correction/batch_consistency and optional source/style/model/analysis IDs support future attribution only. A manual edit marks manually_modified and clears acceptance without replacing a future AI origin. Nullable accepted/rejected evidence is schema preparation, not an implemented feedback or Needs Review workflow. Import records the source recipe ID and imported origin, clears source-bound confidence/review/acceptance, and retains optional provenance identifiers.
+Origins manual/imported/migrated/system and trained_style are supported. Trained-style recipes retain style/version, model/package, feature-schema, BatchContext and PhotoAnalysis identities for reproducibility and stale detection. A manual edit marks manually_modified and clears acceptance without replacing the recorded AI origin. Nullable accepted/rejected evidence is still schema preparation, not a feedback-training workflow. Import records the source recipe ID and imported origin, clears source-bound confidence/review/acceptance, and retains optional provenance identifiers.
 
 There is no command-stack undo/redo. Durable revision restore is the minimum implemented history mechanism. Drafts survive restart after their asynchronous save completes; leaving an asset does not force an extra revision. Snapshot explicitly before closing if its history milestone matters.
 

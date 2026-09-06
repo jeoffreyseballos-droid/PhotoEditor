@@ -1,3 +1,46 @@
+# Phase 7 trained styles / adaptive AI editing verification
+
+Date: 2026-09-05, Windows x64 MSVC, Rust 1.98.1, Node 22.20.0. All Phase 7 work, package resources, temporary acceptance state and generated previews stayed inside PhotoEditor. No PhotographerApp changes, commits or pushes.
+
+## Phase 7 completion checks
+
+| Check                                                   | Result                                                              |
+| ------------------------------------------------------- | ------------------------------------------------------------------- |
+| `npm run format:check`                                  | Passed                                                              |
+| `npm run lint`                                          | Passed                                                              |
+| `npm test`                                              | **80 passed**, 7 files; no failures                                 |
+| `npm run build`                                         | Passed; Vite bundle `index-Clc1oqlV.js` and `index-ClcytBR2.css`    |
+| `cargo fmt --all -- --check`                            | Passed                                                              |
+| `cargo test -p photo-core -p photo-contracts --locked`  | **220 passed**, 1 large 42 MP test intentionally ignored by default |
+| `cargo clippy --workspace --all-targets -- -D warnings` | Passed                                                              |
+| Release inference benchmark                             | 100: 252 µs; 500: 1,197 µs; 1,000: 2,443 µs; 3,000: 6,860 µs        |
+| Real portrait adaptive-style acceptance                 | 4/4 selected assets inferred and rendered; 0 failures               |
+| Windows x64 desktop build                               | Passed; release no-bundle executable built successfully             |
+
+### Adaptive behavior evidence
+
+The supplied local portrait corpus was read through the production ingestion, analysis, BatchContext, trained-style and deterministic renderer services. Four selected frames produced four recipes and four actual edited preview payloads:
+
+| Filename       | Median luminance | Relative group exposure | Predicted exposure | Temperature delta | Confidence | Edited preview |
+| -------------- | ---------------: | ----------------------: | -----------------: | ----------------: | ---------- | -------------- |
+| `IMG_3804.CR3` |            0.159 |               −0.058 EV |          +0.601 EV |           +79.8 K | High       | yes            |
+| `IMG_3909.CR3` |            0.040 |               −1.922 EV |          +1.419 EV |           +61.6 K | High       | yes            |
+| `IMG_4093.JPG` |            0.173 |               +0.058 EV |          +0.541 EV |           +29.3 K | High       | yes            |
+| `IMG_4161.JPG` |            0.205 |               +0.297 EV |          +0.431 EV |           +33.5 K | High       | yes            |
+
+This is evidence of adaptive per-image behavior and renderer integration only; it is not a claim that the development package matches a photographer's taste. The small acceptance context had no usable culling evidence, so its batch group count was four and available count zero; the resolver correctly continued with explicit analysis features and confidence diagnostics.
+
+## Phase 7 evidence
+
+- Contract tests cover valid package loading, canonical checksums, unsupported package/feature versions, corrupt model dimensions, NaN rejection, safe output bounds and prediction validation.
+- Core tests cover dark/bright and warm/cool adaptation, BatchContext directionality, three-frame independent recipes, deterministic repeated conversion, objective optics/geometry preservation, trained-style provenance, built-in replacement, exact 52-asset/5-selection scope (five predictions/recipe updates, 47 untouched) and nonfatal per-asset failure continuation.
+- Frontend tests cover the separate AI style chooser, exact persisted selection IDs, two adaptive predictions with rendered edited previews, collapsed inspector details and cancellation without preview work. Existing POP/WARM/BLACK & WHITE, mask, export, cancellation and debounce assertions remain present.
+- Preview cache identity continues to use the effective recipe/dependency hash; style/package/context/prediction changes therefore invalidate naturally without a special AI export path.
+
+Distinct Rust total for the standard command is **220** (33 contract + 187 core tests); the separate release 42 MP regression adds one passing test. No remaining failures.
+
+Final executable: `target/release/photo-editor-desktop.exe`, **21,723,136 bytes**, SHA-256 `9C21B37F38ED3AF6B3E7C9E7268E33CF31E40DAF3FAC38250E8AE2220037D699`, rebuilt **2026-09-05 20:35:07 local**. This is an unsigned no-bundle Windows build, not installer, signing, distribution, macOS or interactive UI acceptance.
+
 # Phase 6 batch context verification
 
 Date: 2026-09-05, Windows x64 MSVC, Rust 1.98.1, Node 22.20.0. All Phase 6 work and generated acceptance state stayed inside PhotoEditor. No PhotographerApp changes, commits or pushes. Existing source photographs were read but not modified or committed.

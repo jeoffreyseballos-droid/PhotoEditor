@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "output_bounds": {
+    "exposure_ev": { "minimum": -1.5, "maximum": 1.5 },
+    "temperature_delta": { "minimum": -800.0, "maximum": 800.0 },
+    "tint": { "minimum": -12.0, "maximum": 12.0 },
+    "contrast": { "minimum": -15.0, "maximum": 15.0 },
+    "highlights": { "minimum": -45.0, "maximum": 10.0 },
+    "shadows": { "minimum": -10.0, "maximum": 35.0 },
+    "whites": { "minimum": -10.0, "maximum": 15.0 },
+    "blacks": { "minimum": -15.0, "maximum": 10.0 },
+    "saturation": { "minimum": -10.0, "maximum": 10.0 },
+    "vibrance": { "minimum": -5.0, "maximum": 15.0 },
+    "texture": { "minimum": -5.0, "maximum": 12.0 },
+    "clarity": { "minimum": -5.0, "maximum": 10.0 },
+    "dehaze": { "minimum": -5.0, "maximum": 8.0 },
+    "sharpening_amount": { "minimum": 10.0, "maximum": 45.0 },
+    "noise_reduction": { "minimum": 0.0, "maximum": 35.0 },
+    "vignette_amount": { "minimum": -15.0, "maximum": 0.0 }
+  }
+}

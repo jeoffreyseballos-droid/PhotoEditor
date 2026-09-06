@@ -29,7 +29,8 @@
     "resources": {
       "../.resources/exiftool/": "exiftool/",
       "../.resources/raw/": "raw/",
-      "../.resources/toolkit/": "toolkit/"
+      "../.resources/toolkit/": "toolkit/",
+      "../.resources/styles/": "styles/"
     },
     "active": true,
     "targets": "all",

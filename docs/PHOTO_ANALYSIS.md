@@ -6,7 +6,7 @@ This engine describes the normalized source. It never creates editing recommenda
 
 ## Contract and boundaries
 
-Rust `photo-contracts::analysis::PhotoAnalysis` is authoritative. `PHOTO_ANALYSIS_SCHEMA_VERSION = 1` is independent of recipe schema 1, application version, and SQLite migration 6. The earlier unused untyped ImageAnalysis placeholder now aliases this contract; the reserved style interface is still unimplemented.
+Rust `photo-contracts::analysis::PhotoAnalysis` is authoritative. `PHOTO_ANALYSIS_SCHEMA_VERSION = 1` is independent of recipe schema 1, application version, and SQLite migration 6. The earlier unused untyped ImageAnalysis placeholder now aliases this contract; Phase 7 consumes it through the separate trained-style feature builder without adding editing decisions to the analysis service.
 
 The envelope contains analysis_id, asset_id, source_fingerprint, created_at, photo_type, common measurements, subjects, lighting, type_specific, confidence, and diagnostics. PhotoType is the stable enum portrait / real_estate / landscape. CommonAnalysis groups source, exposure, color, dynamic_range, detail, composition, scene, and decoder warnings. TypeAnalysis is a discriminated enum that must agree with the envelope. No mask pixels or high-resolution debug arrays are serialized.
 

@@ -64,7 +64,8 @@ export. A POP asset whose mask remains unresolved follows the existing effective
 recipe semantics: the local layer is disabled and the unchanged result is safely
 exported rather than receiving global exposure.
 
-The current screen is intentionally an MVP: there is no trained-style resolver,
-AI generation, job-level persisted batch format preference, or cloud dependency.
+The current screen remains intentionally small: trained styles are available in
+the separate AI Styles chooser, but there is no generative pixel AI, job-level
+persisted batch format preference, or cloud dependency.
 The existing DevelopmentPanel remains available by selecting a contact-sheet
 thumbnail and retains its individual JPEG/TIFF controls.

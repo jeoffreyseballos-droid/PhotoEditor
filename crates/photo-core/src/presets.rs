@@ -110,6 +110,12 @@ pub fn resolve_built_in_preset(
         model_id: Some("built-in-preset".into()),
         model_version: Some(BUILT_IN_PRESET_VERSION.into()),
         analysis_id: None,
+        style_version: Some(BUILT_IN_PRESET_VERSION.into()),
+        style_package_id: None,
+        feature_schema_version: None,
+        batch_context_id: None,
+        batch_context_version: None,
+        photo_analysis_version: None,
         manually_modified: false,
         acceptance: None,
     };

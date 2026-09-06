@@ -29,6 +29,32 @@ async function call<T>(
 }
 
 export const api = {
+  trainedStyles: (photoType: import("./analysis").PhotoType) =>
+    call<import("./trained-styles").StyleSummary[]>("trained_styles", {
+      photoType,
+    }),
+  trainedStyleState: (
+    jobId: string,
+    photoType: import("./analysis").PhotoType,
+  ) =>
+    call<import("./trained-styles").StyleEditingState>("trained_style_state", {
+      jobId,
+      photoType,
+    }),
+  applyTrainedStyle: (request: import("./trained-styles").StyleApplyRequest) =>
+    call<import("./trained-styles").StyleApplyResult>("apply_trained_style", {
+      request,
+    }),
+  trainedStyleProgress: (
+    jobId: string,
+    photoType: import("./analysis").PhotoType,
+  ) =>
+    call<import("./trained-styles").StyleApplyProgress | null>(
+      "trained_style_progress",
+      { jobId, photoType },
+    ),
+  cancelTrainedStyle: (requestId: string) =>
+    call<void>("cancel_trained_style", { requestId }),
   batchContextState: (
     jobId: string,
     photoType: import("./analysis").PhotoType,

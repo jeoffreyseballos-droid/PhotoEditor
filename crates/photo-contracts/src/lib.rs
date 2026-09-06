@@ -7,6 +7,7 @@ pub mod formats;
 pub use development::*;
 pub mod recipe;
 pub mod toolkit;
+pub mod trained_style;
 pub use recipe::*;
 use serde::{Deserialize, Serialize};
 use std::{future::Future, path::PathBuf, pin::Pin};
@@ -81,30 +82,6 @@ pub type ImageAnalysis = analysis::PhotoAnalysis;
 
 pub trait ImageAnalyzer: Send + Sync {
     fn analyze(&self, proxy: ImageProxy) -> ServiceFuture<'_, ImageAnalysis>;
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrainedStyle {
-    pub id: String,
-    pub company_id: Option<String>,
-    pub user_id: Option<String>,
-    pub model_version: String,
-    pub rules: serde_json::Value,
-    pub metadata: serde_json::Value,
-    pub model_payload_reference: String,
-    pub signature: String,
-}
-
-pub trait StyleCatalog: Send + Sync {
-    fn get_style(&self, id: &str) -> ServiceFuture<'_, Option<TrainedStyle>>;
-}
-
-pub trait StyleInference: Send + Sync {
-    fn infer_recipe(
-        &self,
-        style: TrainedStyle,
-        analysis: ImageAnalysis,
-    ) -> ServiceFuture<'_, EditRecipe>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

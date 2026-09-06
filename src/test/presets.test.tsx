@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { api } from "../api";
 import type { CullingOverview } from "../culling";
 import type { BuiltInPreset } from "../presets";
+import type { StyleAssetInference, StyleSummary } from "../trained-styles";
 import { PresetEditingScreen } from "../screens/PresetEditingScreen";
 import { asset, job } from "./fixtures";
 import { developmentStateFixture } from "./recipe-fixture";
@@ -13,6 +14,10 @@ vi.mock("../api", () => ({
     runBatchContext: vi.fn(),
     batchContextProgress: vi.fn(),
     cancelBatchContext: vi.fn(),
+    trainedStyleState: vi.fn(),
+    applyTrainedStyle: vi.fn(),
+    trainedStyleProgress: vi.fn(),
+    cancelTrainedStyle: vi.fn(),
     builtinPresets: vi.fn(),
     presetEditingState: vi.fn(),
     applyBuiltInPreset: vi.fn(),
@@ -47,6 +52,76 @@ const presets: BuiltInPreset[] = [
   },
 ];
 const selectedAssets = [asset("photo-1"), asset("photo-2")];
+const adaptiveStyle: StyleSummary = {
+  style_id: "adaptive-natural-development",
+  name: "Adaptive Natural — Development",
+  version: "1.0.0",
+  model_version: "adaptive-natural-linear-2026-09-v1",
+  package_identity: "a".repeat(64),
+  photo_type: "portrait",
+  description: "Development-only adaptive style",
+  development_only: true,
+};
+const adaptiveInference = (
+  assetId: string,
+  exposure: number,
+): StyleAssetInference => ({
+  job_id: job.id,
+  asset_id: assetId,
+  style_id: adaptiveStyle.style_id,
+  style_version: adaptiveStyle.version,
+  model_version: adaptiveStyle.model_version,
+  package_identity: adaptiveStyle.package_identity,
+  feature_schema: "style_features_v1",
+  input_identity: "b".repeat(64),
+  analysis_id: `analysis-${assetId}`,
+  batch_context_id: "c".repeat(64),
+  status: "applied",
+  prediction: {
+    style_id: adaptiveStyle.style_id,
+    style_version: adaptiveStyle.version,
+    model_version: adaptiveStyle.model_version,
+    package_identity: adaptiveStyle.package_identity,
+    feature_schema: "style_features_v1",
+    adjustments: {
+      exposure_ev: exposure,
+      temperature_delta: assetId === "photo-1" ? -120 : 80,
+      tint: 0,
+      contrast: 4,
+      highlights: -12,
+      shadows: 16,
+      whites: 2,
+      blacks: -2,
+      saturation: 1,
+      vibrance: 5,
+      texture: 3,
+      clarity: 3,
+      dehaze: 1,
+      sharpening_amount: 25,
+      noise_reduction: 4,
+      vignette_amount: -2,
+    },
+    confidence: "medium",
+    confidence_score: 0.76,
+    diagnostics: {
+      resolver: "photo-editor-linear-style-v1",
+      missing_feature_count: 1,
+      bounded_controls: [],
+      warnings: [],
+    },
+  },
+  feature_summary: {
+    median_luminance: exposure > 0 ? 0.2 : 0.72,
+    batch_exposure_delta_ev: exposure,
+    warm_cool_balance: 0.04,
+    batch_warm_cool_delta: -0.08,
+    group_confidence: 0.85,
+    missing_feature_count: 1,
+  },
+  recipe_hash: `recipe-${assetId}`,
+  error: null,
+  stale: false,
+});
 
 function overview(): CullingOverview {
   return {
@@ -92,6 +167,18 @@ beforeEach(() => {
   });
   vi.mocked(api.batchContextProgress).mockResolvedValue(null);
   vi.mocked(api.cancelBatchContext).mockResolvedValue();
+  vi.mocked(api.trainedStyleState).mockResolvedValue({
+    styles: [],
+    selected_asset_ids: ["photo-1", "photo-2"],
+    applied_style: null,
+    applied_count: 0,
+    stale_asset_ids: [],
+    needs_review: [],
+    inferences: [],
+    progress: null,
+  });
+  vi.mocked(api.trainedStyleProgress).mockResolvedValue(null);
+  vi.mocked(api.cancelTrainedStyle).mockResolvedValue();
   vi.mocked(api.builtinPresets).mockResolvedValue(presets);
   vi.mocked(api.presetEditingState).mockResolvedValue({
     selected_asset_ids: ["photo-1", "photo-2"],
@@ -614,4 +701,96 @@ it("reloads the persisted selection instead of stale handoff IDs after returning
   expect(
     screen.getByRole("button", { name: "Select photo-3.nef" }),
   ).toBeInTheDocument();
+});
+
+it("applies the development AI style only to the persisted selection and shows prediction details", async () => {
+  vi.mocked(api.trainedStyleState).mockResolvedValue({
+    styles: [adaptiveStyle],
+    selected_asset_ids: ["photo-1", "photo-2"],
+    applied_style: null,
+    applied_count: 0,
+    stale_asset_ids: [],
+    needs_review: [],
+    inferences: [],
+    progress: null,
+  });
+  vi.mocked(api.applyTrainedStyle).mockResolvedValue({
+    style: adaptiveStyle,
+    selected_asset_ids: ["photo-1", "photo-2"],
+    predictions_attempted: 2,
+    predictions_succeeded: 2,
+    predictions_failed: 0,
+    recipes_updated: 2,
+    recipes_unchanged: 0,
+    needs_review: [],
+    inferences: [
+      adaptiveInference("photo-1", 0.64),
+      adaptiveInference("photo-2", 0.08),
+    ],
+    duration_ms: 4,
+  });
+  open();
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Adaptive Natural/ }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Apply AI Style" }));
+  await screen.findByText(`AI Style: ${adaptiveStyle.name}`);
+  expect(api.applyTrainedStyle).toHaveBeenCalledWith(
+    expect.objectContaining({
+      job_id: job.id,
+      style_id: adaptiveStyle.style_id,
+      selected_asset_ids: ["photo-1", "photo-2"],
+    }),
+  );
+  expect(
+    vi.mocked(api.applyTrainedStyle).mock.calls[0][0].selected_asset_ids,
+  ).toHaveLength(2);
+  expect(api.renderRecipe).toHaveBeenCalledTimes(2);
+  expect(
+    await screen.findByLabelText(
+      `${adaptiveStyle.name} edited preview for photo-1.nef`,
+    ),
+  ).toHaveAttribute("src", "data:image/jpeg;base64,edited-photo-1");
+  fireEvent.click(screen.getByRole("button", { name: "Select photo-1.nef" }));
+  expect(
+    await screen.findByText(/Style Inference details/),
+  ).toBeInTheDocument();
+  expect(screen.getByText("medium")).toBeInTheDocument();
+  expect(screen.getAllByText("+0.64 EV")).toHaveLength(2);
+});
+
+it("cancels an in-flight AI style request without starting preview work", async () => {
+  vi.mocked(api.trainedStyleState).mockResolvedValue({
+    styles: [adaptiveStyle],
+    selected_asset_ids: ["photo-1", "photo-2"],
+    applied_style: null,
+    applied_count: 0,
+    stale_asset_ids: [],
+    needs_review: [],
+    inferences: [],
+    progress: null,
+  });
+  vi.mocked(api.applyTrainedStyle).mockImplementation(
+    () => new Promise(() => {}),
+  );
+  open();
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Adaptive Natural/ }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Apply AI Style" }));
+  expect(
+    await screen.findByText(/Applying Adaptive Natural/),
+  ).toBeInTheDocument();
+  const requestId = vi.mocked(api.applyTrainedStyle).mock.calls[0][0]
+    .request_id;
+  fireEvent.click(screen.getByRole("button", { name: "Cancel Style" }));
+  await waitFor(() =>
+    expect(api.cancelTrainedStyle).toHaveBeenCalledWith(requestId),
+  );
+  expect(
+    screen.getByText(
+      "AI style stopped. Completed recipes are preserved; remaining photographs were not changed.",
+    ),
+  ).toBeInTheDocument();
+  expect(api.renderRecipe).not.toHaveBeenCalled();
 });

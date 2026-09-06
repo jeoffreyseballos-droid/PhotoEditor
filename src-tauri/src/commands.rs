@@ -14,7 +14,60 @@ pub struct DesktopState(
     pub Arc<photo_core::analysis::AnalysisService>,
     pub Arc<photo_core::culling::CullingService>,
     pub Arc<photo_core::batch_context::BatchContextService>,
+    pub Arc<photo_core::trained_styles::TrainedStyleService>,
 );
+
+#[tauri::command]
+pub fn trained_styles(
+    state: State<'_, DesktopState>,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> Vec<photo_core::trained_styles::StyleSummary> {
+    state.5.styles(photo_type)
+}
+
+#[tauri::command]
+pub async fn trained_style_state(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<photo_core::trained_styles::StyleEditingState> {
+    let service = state.5.clone();
+    tauri::async_runtime::spawn_blocking(move || service.state(&job_id, photo_type))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn apply_trained_style(
+    state: State<'_, DesktopState>,
+    request: photo_core::trained_styles::StyleApplyRequest,
+) -> photo_contracts::ProcessingResult<photo_core::trained_styles::StyleApplyResult> {
+    let service = state.5.clone();
+    let permit = service.reserve(request)?;
+    tauri::async_runtime::spawn_blocking(move || service.apply(permit))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub async fn trained_style_progress(
+    state: State<'_, DesktopState>,
+    job_id: String,
+    photo_type: photo_contracts::analysis::PhotoType,
+) -> photo_contracts::ProcessingResult<Option<photo_core::trained_styles::StyleApplyProgress>> {
+    let service = state.5.clone();
+    tauri::async_runtime::spawn_blocking(move || service.progress(&job_id, photo_type))
+        .await
+        .map_err(photo_core::rendering::internal)?
+}
+
+#[tauri::command]
+pub fn cancel_trained_style(
+    state: State<'_, DesktopState>,
+    request_id: String,
+) -> photo_contracts::ProcessingResult<()> {
+    state.5.cancel(&request_id)
+}
 
 #[tauri::command]
 pub async fn run_batch_context(

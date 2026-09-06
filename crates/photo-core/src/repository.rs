@@ -28,6 +28,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/007_culling.sql"),
     include_str!("../migrations/008_duplicate_content.sql"),
     include_str!("../migrations/009_batch_context.sql"),
+    include_str!("../migrations/010_trained_styles.sql"),
 ];
 
 #[derive(Clone)]
@@ -73,6 +74,7 @@ impl JobRepository {
     }
 
     pub fn recover_interrupted(&self) -> AppResult<()> {
+        self.connect()?.execute("UPDATE trained_style_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; completed recipes remain available.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
         self.connect()?.execute("UPDATE batch_context_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; cached context remains available.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
         self.connect()?.execute("UPDATE culling_runs SET payload=json_set(payload,'$.status','interrupted','$.stage','Interrupted; completed ratings preserved. Resume culling.') WHERE json_extract(payload,'$.status') IN ('queued','running')", [])?;
         self.connect()?.execute("UPDATE analysis_status SET state='interrupted', request_id=NULL, error='Analysis interrupted; rerun safely.' WHERE state IN ('queued','analyzing')", [])?;

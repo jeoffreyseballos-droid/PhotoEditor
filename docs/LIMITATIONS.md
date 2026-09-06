@@ -1,3 +1,15 @@
+# Phase 7 limitations
+
+## Adaptive style scope
+
+The bundled `Adaptive Natural — Development` package is a deterministic linear regression fixture used to prove the runtime contract. It is not trained from the photographer's images and must not be interpreted as a learned personal style. Its outputs are creative-control suggestions bounded by the renderer; objective orientation, optics, source identity and geometry are preserved.
+
+The v1 feature vector is limited to reliable Phase 4 measurements and Phase 6 relative context. Missing measurements are explicit, but neutral defaults reduce confidence and can reduce adaptation. Batch relationships are conservative proxy deltas, not recovered exposure or calibrated Kelvin measurements. The resolver has no ONNX/GPU backend, HSL/curve/local-mask prediction, reference-image embedding or style blending.
+
+Selection scoping, persistence and stale detection are implemented, but real-photo visual quality still requires manual review. One failed asset is marked Needs Review and left unchanged; confidence is evidence metadata, not a calibrated probability. Preview/export math remains the existing deterministic CPU renderer, with its documented reduced-preview versus full-resolution differences.
+
+Phase 8 training is intentionally absent: no RAW/reference pairing, optimization loop, photographer feedback learning, Training Studio, cloud service, licensing or production signing is included. A package can be replaced only through the validated local artifact format documented in [TRAINED_STYLES.md](TRAINED_STYLES.md).
+
 # Phase 6 limitations
 
 ## Batch context is relationship evidence, not an edit decision
@@ -12,7 +24,7 @@ Reference candidates are technically stable anchors, not artistic winners. Thres
 
 Missing current PhotoAnalysis yields an unavailable asset context and does not fail the batch. Available PhotoAnalysis without current Phase 5 features is partial and can still enter measurement-based lighting context, but lacks visual scene evidence. Phase 6 does not automatically run missing Phase 4/5 analysis. A source/analysis/grouping/selection change invalidates the current identity; recipe, preset, mask and export changes do not.
 
-The inspector is a development validation surface, not a final photographer workflow. It does not show pixel overlays or every diagnostic/reference reason, and native interactive/macOS acceptance is not claimed. The local portrait shoot is useful evidence but does not validate real-estate rooms/brackets, landscapes, varied cameras, daylight transitions or 3,000 real RAW files. Trained styles, recipe inference, AI exposure/WB/tone, consistency edits, HDR merging and cloud AI remain unimplemented.
+The inspector is a development validation surface, not a final photographer workflow. It does not show pixel overlays or every diagnostic/reference reason, and native interactive/macOS acceptance is not claimed. The local portrait shoot is useful evidence but does not validate real-estate rooms/brackets, landscapes, varied cameras, daylight transitions or 3,000 real RAW files. Phase 7 inference is a development-only local linear model with no learned personal style, calibrated quality guarantee, style blending or cloud AI.
 
 ## Preserved Phase 5 limitations
 
@@ -36,7 +48,7 @@ No automatic resume, history quota or hard-crash scratch cleanup service. Rerun/
 
 The BLURRY issue requires the calibrated severe subject-softness reason; mild softness and ambiguous low texture remain inspector review evidence. A confident global-blur issue for real-estate/landscape photographs is not yet emitted because the current proxy cannot reliably distinguish technical blur from intentional low-detail scenes. CLOSED EYES exists as an explicit issue contract with per-person detailed reasons, but the shipping eye-state provider is unavailable, so its UI filter is disabled. No eye state is fabricated.
 
-One accessible 53-asset/52-distinct-photo portrait folder was inspected and reprocessed through the production service. It calibrated a specific severe-softness failure and verified ratings plus duplicate display behavior, but it did not supply labeled blink/expression truth or broad portrait accuracy evidence. No Sony RAW, real-estate/landscape quality, interactive native acceptance, macOS runtime or commercial release readiness is claimed. Built-in presets are deterministic examples only: no trained styles, feedback learning, scene-consistency editing, PhotographerApp integration or cloud dependency.
+One accessible 53-asset/52-distinct-photo portrait folder was inspected and reprocessed through the production service. It calibrated a specific severe-softness failure and verified ratings plus duplicate display behavior, but it did not supply labeled blink/expression truth or broad portrait accuracy evidence. Phase 7 additionally rendered four adaptive-style previews from this corpus, but that does not establish style quality. No Sony RAW, real-estate/landscape quality, interactive native acceptance, macOS runtime or commercial release readiness is claimed. Built-in presets remain deterministic examples; feedback learning, scene-consistency authoring, PhotographerApp integration and cloud dependency remain out of scope.
 
 ## Preserved Phase 4 source-analysis limitations
 
@@ -114,6 +126,6 @@ Same-source fingerprints still use canonical path/size/mtime rather than reading
 
 ## Deferred
 
-Still deferred after Phase 5: trained styles/training, automatic exposure edits, batch AI recipes/scene consistency decisions, semantic scene clustering, Lightroom/XMP imports, face beauty/generative editing, PhotographerApp APIs, auth, cloud, licensing/billing, GPU providers and production installers/signing. Source analysis and first-pass visual similarity culling are implemented separately; work stops at Phase 5.
+Still deferred after Phase 7: Phase 8 trained-style authoring/training, automatic semantic scene classifiers, Lightroom/XMP imports, face beauty/generative editing, PhotographerApp APIs, auth, cloud, licensing/billing, GPU providers and production installers/signing. Source analysis, culling, batch context, adaptive creative recipes and deterministic rendering are implemented as separate boundaries.
 
 Ship the executable with raw/, exiftool/ and toolkit/ resources and their licenses. The MODNet model is Apache-2.0; ONNX Runtime is MIT; the unmodified Lensfun database is CC BY-SA 3.0. Distribution/license-obligation review remains a release task.

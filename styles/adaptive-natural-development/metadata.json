@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "description": "A local deterministic development model that demonstrates adaptive per-photo control prediction. It is not a photographer-trained style.",
+  "author": "PhotoEditor development fixture",
+  "created_at": "2026-09-05T00:00:00Z",
+  "development_only": true,
+  "trained_from_user_photos": false,
+  "training_provenance": "Hand-authored regression coefficients for Phase 7 runtime validation; no user photographs or personal editing decisions were used for training."
+}

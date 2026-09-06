@@ -6,7 +6,7 @@ Phase 6 adds a fourth independent source boundary: PhotoAnalysis describes one p
 
 `photo-contracts/batch_context.rs` owns the bounded schema-1 envelope, independent scene/lighting/sequence groups, explicit ranked reference candidates, per-asset relative exposure/color relationships, availability/confidence notes and diagnostics. `photo-core/batch_context` owns deterministic identities, a 64-anchor scene pass, a 27-neighbor lighting index, sequence/bracket classification, reference filtering, a cancellable service and migration-9 JSON persistence. Exact identities reopen from cache; changed selections perform bounded full regrouping while older cache rows remain reusable. See [BATCH_CONTEXT.md](BATCH_CONTEXT.md).
 
-The Editing screen exposes this only in a collapsed development inspector. Tauri dispatches load/group/persist work off the UI thread and exposes progress/cancellation. A failed asset remains an unavailable context rather than failing its peers. Future trained style resolution may consume `PhotoAnalysis + AssetBatchContext + TrainedStyle`, but no such resolver or edit generation exists.
+The Editing screen exposes this in a collapsed development inspector. Tauri dispatches load/group/persist work off the UI thread and exposes progress/cancellation. A failed asset remains an unavailable context rather than failing its peers. Phase 7 consumes `PhotoAnalysis + AssetBatchContext + TrainedStyle` through a replaceable local resolver and emits ordinary per-asset EditRecipes; see [TRAINED_STYLES.md](TRAINED_STYLES.md).
 
 ## Preserved Phase 5 culling and preset editing
 
@@ -20,7 +20,7 @@ The Phase 4 source-analysis service and Phase 3 recipes below are preserved; cul
 
 ## Independent source analysis
 
-Analysis = what the image is. Style = what the photographer wants. Recipe = what to do. Renderer = executes. Phase 4 implements the first boundary only; recipes remain the sole editing authority.
+Analysis = what the image is. Style = what the photographer wants. Recipe = what to do. Renderer = executes. Phase 7 implements the local style-to-recipe boundary while recipes remain the sole editing authority.
 
 The typed Rust PhotoAnalysis v1 and PhotoType feed an independent local AnalysisService: shared normalized unedited 1600-pixel source proxy → objective measurements → optional existing portrait-alpha provider → photo-type-specific observations → transactional SQLite analysis tables (migration 6). Common measurements are reusable across photo types. Analysis cache keys never contain recipes. No UI, cloud, style, recipe-generation or clustering dependency enters measurement code.
 
@@ -34,7 +34,7 @@ The per-asset EditRecipe v1 is authoritative Rust: a required identity/version e
 
 Source-derived OpticsMetadata stays separate. CPU render_recipe validates an EditRecipe, resolves source/mask/profile dependencies and translates into the unchanged low-level renderer. The React state holds a recipe, not a separate render parameter vector. Legacy adjustment schemas 1/2 migrate losslessly into recipe schema 1; SQLite schema 5 adds transactional current recipes, revision history and corrupt-data recovery.
 
-Analysis = what the image is. Style = what the photographer wants. Recipe = what to do to this individual image. Renderer = executes the recipe. Source analysis is implemented separately in Phase 4; style learning and recipe generation remain unimplemented.
+Analysis = what the image is. Style = what the photographer wants. Recipe = what to do to this individual image. Renderer = executes the recipe. Phase 7's development resolver predicts creative controls only; objective optics/geometry remain intact and no pixel-generating AI is introduced.
 
 ## Source normalization and formats
 
@@ -114,4 +114,4 @@ The startup render budget remains min(4 GiB, available RAM / 2), with a conserva
 
 JPEG is 8-bit sRGB (default UI quality 95); TIFF is uncompressed strip-based RGB16 sRGB. Both include ICC. Photographic metadata is copied from an allowlist; GPS, descriptions, serials, maker notes and XMP are omitted. Export writes new suffixed names in the job output directory and never overwrites originals or existing exports. Checkpoints are published only after output publication. A crash between publication and SQLite commit can leave an untracked output; retry gets a suffix.
 
-No trained styles, automatic edit decisions, batch AI recipes, scene clustering, generative processing, PhotographerApp API, authentication, cloud, licensing/billing or production signing were implemented.
+Phase 7 adds local adaptive style inference and per-asset recipe generation. Training, generative processing, PhotographerApp API, authentication, cloud, licensing/billing and production signing remain outside this boundary.
